@@ -1,5 +1,6 @@
-package com.example.ai_trading_signals
+package com.example.AiTradingUI
 
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity()
+
