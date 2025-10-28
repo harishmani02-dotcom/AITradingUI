@@ -1,5 +1,3 @@
-
-
 name: ai_trading_signals
 description: A Flutter project.
 
@@ -14,21 +12,13 @@ dependencies:
   supabase_flutter: ^2.5.0
   google_fonts: ^6.2.0
 
+  cupertino_icons: ^1.0.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  flutter_lints: ^6.0.0
+
 
 flutter:
   uses-material-design: true
-
-
-
-
-
-
-
-
-
-
-
-
