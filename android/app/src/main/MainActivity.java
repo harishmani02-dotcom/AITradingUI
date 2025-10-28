@@ -1,6 +1,5 @@
-package com.example.ai_trading_UI;
- 
-import io.flutter.embedding.android.FlutterActivity;
- 
-public class MainActivity extends FlutterActivity {
-}
+package com.example.AiTradingUI
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
