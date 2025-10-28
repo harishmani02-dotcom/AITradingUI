@@ -18,14 +18,15 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - name: Setup Flutter (pin exact version)
+        uses: flutter-actions/setup-flutter@v2
         with:
-          flutter-version: '3.35.7 '
-          channel: 'stable'
+          flutter-version: '3.35.7'
 
       - name: Show Flutter & Dart version
-        run: flutter --version
+        run: |
+          flutter --version
+          dart --version
 
       - name: Install dependencies
         run: flutter pub get
