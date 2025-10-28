@@ -1,5 +1,6 @@
 
-name: aitradingUI
+
+name: ai_trading_signals
 description: A Flutter project.
 
 environment:
@@ -13,13 +14,13 @@ dependencies:
   supabase_flutter: ^2.5.0
   google_fonts: ^6.2.0
 
-
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
 flutter:
   uses-material-design: true
+
 
 
 
