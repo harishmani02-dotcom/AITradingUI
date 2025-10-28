@@ -1,3 +1,36 @@
+name: Flutter CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 'stable' # or pin a specific version you tested locally
+
+      - name: Show Flutter & Dart version
+        run: flutter --version
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+
+
+
+
+
+
+
 name: ai_trading_signals
 description: A Flutter project.
 
@@ -22,3 +55,4 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
