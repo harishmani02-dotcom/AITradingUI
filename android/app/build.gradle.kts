@@ -6,6 +6,7 @@ plugins {
 }
 
 android {
+    coppileSdkVersion 34
     namespace = "com.example.ai_trading_signals"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -20,6 +21,8 @@ android {
     }
 
     defaultConfig {
+        miniSdkVersion 21
+        targetSdkVersion 34
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.ai_trading_signals"
         // You can update the following values to match your application needs.
@@ -42,3 +45,4 @@ android {
 flutter {
     source = "../.."
 }
+
