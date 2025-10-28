@@ -3,7 +3,7 @@ name: ai_trading_signals
 description: A Flutter project.
 
 environment:
-  sdk: ">=3.35.7 <4.0.0"
+  sdk: ">=3.2.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -19,6 +19,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
 
 
 
