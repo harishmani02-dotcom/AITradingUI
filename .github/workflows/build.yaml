@@ -31,8 +31,14 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run tests
-        run: flutter test
+      - name: Run tests if present
+        run: |
+          if [ -d test ] && [ "$(ls -A test)" ]; then
+            echo "Running tests..."
+            flutter test
+          else
+            echo "No tests found in test/ — skipping flutter test"
+          fi
 
       - name: Build APK
         run: flutter build apk --release
