@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    coppileSdkVersion 34
+    compileSdkVersion 34
     namespace = "com.example.ai_trading_signals"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
@@ -45,4 +45,5 @@ android {
 flutter {
     source = "../.."
 }
+
 
