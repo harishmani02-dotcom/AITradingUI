@@ -1,12 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.harishmani02.aitradingui">
+    
     
     <!-- Permissions go HERE, BEFORE <application> -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     
     <application
-        android:label="aitradingui"
+        android:label="ai_trading_signals"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
         
