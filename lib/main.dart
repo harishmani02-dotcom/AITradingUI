@@ -8,10 +8,10 @@ import 'providers/auth_provider.dart';
 import 'providers/signals_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
- <void> main() async {
+
+ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Supabase
@@ -70,6 +70,7 @@ class AuthWrapper extends StatelessWidget {
     }
   }
 }
+
 
 
 
