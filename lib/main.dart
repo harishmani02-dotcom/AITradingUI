@@ -11,10 +11,8 @@ import 'screens/home_screen.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 
-Future <void> main() async {
+ <void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-    await dotenv.load(fileName: ".env");
 
   // Initialize Supabase
   await Supabase.initialize(
@@ -72,5 +70,6 @@ class AuthWrapper extends StatelessWidget {
     }
   }
 }
+
 
 
