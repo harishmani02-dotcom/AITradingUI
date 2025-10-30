@@ -26,22 +26,20 @@ class SignalsProvider with ChangeNotifier {
  
   double get averageConfidence {
     if (_signals.isEmpty) return 0;
-    return _signals.map((s) => s.confidence).reduce((a, b) => a + b) / signals.length;
+    return _signals.map((s) => s.confidence).reduce((a, b) => a + b) / _signals.length;
   }
  
-  /// ✅ FIX 1, 2, 3: Fetch latest unique signals + check subscription
+  /// ✅ FINAL FIX: Fetch latest unique signals
   Future<void> fetchTodaySignals({bool? isPremium}) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
  
-      // 🔍 DEBUG: Check authentication
       final user = _supabase.auth.currentUser;
-      print('🔐 Current user: ${user?.email ?? "NOT LOGGED IN"}');
-      print('🔐 User ID: ${user?.id}');
+      print('🔐 User: ${user?.email ?? "NOT LOGGED IN"}');
  
-      // ✅ FIX 3: Check subscription status from database
+      // Check subscription status
       if (isPremium == null && user != null) {
         try {
           final subscriptionResponse = await _supabase
@@ -60,94 +58,108 @@ class SignalsProvider with ChangeNotifier {
             _isPremiumUser = subscriptionStatus;
           }
           
-          print('💎 Premium status: $_isPremiumUser');
+          print('💎 Premium: $_isPremiumUser');
         } catch (e) {
-          print('⚠️ Could not fetch subscription status: $e');
+          print('⚠️ Subscription check failed: $e');
           _isPremiumUser = false;
         }
       } else {
         _isPremiumUser = isPremium ?? false;
       }
  
-      // ✅ FIX 1 & 2: Get all signals, then filter for latest per stock
-      print('📡 Fetching signals from database...');
+      // ✅ STEP 1: Get the latest signal_date
+      print('📡 Finding latest signal date...');
       
-      final response = await _supabase
+      final maxDateResult = await _supabase
           .from('signals')
-          .select()
+          .select('signal_date')
           .order('signal_date', ascending: false)
-          .order('created_at', ascending: false);
+          .limit(1);
  
-      print('✅ Fetched ${response.length} total signals from DB');
- 
-      if (response.isEmpty) {
-        print('❌ No signals found in database');
+      if (maxDateResult.isEmpty) {
+        print('❌ No signals in database');
         _signals = [];
         _isLoading = false;
         notifyListeners();
         return;
       }
  
-      // ✅ Group by symbol and take only the latest (first occurrence)
-      final Map<String, dynamic> latestSignalsMap = {};
-      
+      final latestDate = maxDateResult[0]['signal_date'];
+      print('📅 Latest date: $latestDate');
+ 
+      // ✅ STEP 2: Get ALL signals for that date only
+      final response = await _supabase
+          .from('signals')
+          .select()
+          .eq('signal_date', latestDate);
+ 
+      print('✅ Fetched ${response.length} signals for $latestDate');
+ 
+      if (response.isEmpty) {
+        print('❌ No signals found for latest date');
+        _signals = [];
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+ 
+      // ✅ STEP 3: Remove duplicates by symbol (keep first occurrence)
+      final seenSymbols = <String>{};
+      final uniqueSignals = <dynamic>[];
+ 
       for (var json in response) {
         final symbol = json['symbol'];
-        // Only add if we haven't seen this symbol yet
-        if (!latestSignalsMap.containsKey(symbol)) {
-          latestSignalsMap[symbol] = json;
+        if (!seenSymbols.contains(symbol)) {
+          seenSymbols.add(symbol);
+          uniqueSignals.add(json);
+        } else {
+          print('⚠️ Duplicate found: $symbol - SKIPPED');
         }
       }
  
-      print('📊 Found ${latestSignalsMap.length} unique stocks');
+      print('📊 Unique signals: ${uniqueSignals.length}');
  
-      // Convert to SignalModel list
-      var signalsList = latestSignalsMap.values
+      // ✅ STEP 4: Convert to models
+      var signalsList = uniqueSignals
           .map((json) => SignalModel.fromJson(json))
           .toList();
  
-      // Sort by confidence (highest first)
+      // ✅ STEP 5: Sort by confidence
       signalsList.sort((a, b) => b.confidence.compareTo(a.confidence));
  
-      print('📈 Signals sorted by confidence');
- 
-      // ✅ Limit for free users
+      // ✅ STEP 6: Limit for free users
       if (!_isPremiumUser) {
         signalsList = signalsList.take(5).toList();
-        print('🆓 FREE user - Limited to 5 signals');
+        print('🆓 FREE - Limited to 5 signals');
       } else {
-        print('💎 PREMIUM user - Showing all ${signalsList.length} signals');
+        print('💎 PREMIUM - Showing all ${signalsList.length} signals');
       }
  
       _signals = signalsList;
       
-      print('✅ Final signals count: ${_signals.length}');
+      print('✅ FINAL: ${_signals.length} signals');
       print('📊 Symbols: ${_signals.map((s) => s.symbol).join(", ")}');
-      print('📅 Latest signal date: ${_signals.isNotEmpty ? _signals[0].signalDate : "N/A"}');
  
       _isLoading = false;
       notifyListeners();
  
     } catch (e) {
-      print('❌ ERROR fetching signals: $e');
+      print('❌ ERROR: $e');
       _errorMessage = 'Failed to load signals: ${e.toString()}';
       _isLoading = false;
       notifyListeners();
     }
   }
  
-  /// Refresh signals (calls fetchTodaySignals)
   Future<void> refreshSignals({bool? isPremium}) async {
     await fetchTodaySignals(isPremium: isPremium);
   }
  
-  /// Clear any error messages
   void clearError() {
     _errorMessage = null;
     notifyListeners();
   }
  
-  /// Manually set premium status (useful for testing)
   void setPremiumStatus(bool isPremium) {
     _isPremiumUser = isPremium;
     notifyListeners();
