@@ -4,7 +4,7 @@ import '../models/signal_model.dart';
  
 class SignalsProvider with ChangeNotifier {
   final _supabase = Supabase.instance.client;
-  
+ 
   List<SignalModel> _signals = [];
   bool _isLoading = false;
   String? _errorMessage;
@@ -15,10 +15,10 @@ class SignalsProvider with ChangeNotifier {
  
   int get buySignalsCount =>
       _signals.where((s) => s.signal.toLowerCase() == 'buy').length;
-  
+ 
   int get sellSignalsCount =>
       _signals.where((s) => s.signal.toLowerCase() == 'sell').length;
-  
+ 
   int get holdSignalsCount =>
       _signals.where((s) => s.signal.toLowerCase() == 'hold').length;
  
@@ -27,18 +27,17 @@ class SignalsProvider with ChangeNotifier {
     return _signals.map((s) => s.confidence).reduce((a, b) => a + b) / _signals.length;
   }
  
+  /// ✅ Updated function - removed date filter
   Future<void> fetchTodaySignals({bool isPremium = false}) async {
     try {
       _isLoading = true;
       _errorMessage = null;
       notifyListeners();
  
-      final today = DateTime.now().toIso8601String().split('T')[0];
-      
+      // Removed filtering by signal_date (caused CI build/timezone issues)
       var query = _supabase
           .from('signals')
           .select()
-          .eq('signal_date', today)
           .order('confidence', ascending: false);
  
       // If not premium, limit to 5 signals (free tier)
@@ -47,7 +46,7 @@ class SignalsProvider with ChangeNotifier {
       }
  
       final response = await query;
-      
+ 
       _signals = (response as List)
           .map((json) => SignalModel.fromJson(json))
           .toList();
