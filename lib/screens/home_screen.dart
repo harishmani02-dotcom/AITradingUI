@@ -20,9 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSignals();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadSignals());
   }
 
   @override
@@ -34,7 +32,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadSignals() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final signalsProvider = Provider.of<SignalsProvider>(context, listen: false);
-    
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
     await signalsProvider.fetchTodaySignals(isPremium: isPremium);
   }
@@ -58,53 +55,79 @@ class _HomeScreenState extends State<HomeScreen> {
     final signalsProvider = Provider.of<SignalsProvider>(context);
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
 
-    // Filter signals based on search query
     final filteredSignals = _searchQuery.isEmpty
         ? signalsProvider.signals
         : signalsProvider.signals
-            .where((signal) => signal.symbol.toUpperCase().contains(_searchQuery))
+            .where((signal) =>
+                signal.symbol.toUpperCase().contains(_searchQuery))
             .toList();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          "Today's Signals",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+      backgroundColor: const Color(0xFFF9FAFB),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: AppBar(
+          automaticallyImplyLeading: false,
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF1E40AF), Color(0xFF312E81)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
           ),
+          title: Padding(
+            padding: const EdgeInsets.only(top: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text(
+                  "Today's AI Signals",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  "Get daily stock insights powered by AI",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFFE0E7FF),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.account_circle_rounded,
+                  color: Colors.white, size: 30),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                );
+              },
+            ),
+          ],
         ),
-        backgroundColor: const Color(0xFF1E40AF),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person, color: Colors.white),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ProfileScreen()),
-              );
-            },
-          ),
-        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadSignals,
         child: Column(
           children: [
-            // Info banner
+            // 🔹 Info banner
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFFDBEAFE),
-              ),
+              color: const Color(0xFFDBEAFE),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.trending_up,
-                    color: Color(0xFF10B981),
-                    size: 32,
-                  ),
+                  const Icon(Icons.trending_up,
+                      color: Color(0xFF10B981), size: 32),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -133,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // ✅ SEARCH BAR
+            // 🔹 Search bar
             Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -156,10 +179,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Colors.grey[400],
                     fontSize: 14,
                   ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF1E40AF),
-                  ),
+                  prefixIcon: const Icon(Icons.search, color: Color(0xFF1E40AF)),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
                           icon: const Icon(Icons.clear, color: Colors.grey),
@@ -180,7 +200,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // ✅ SEARCH RESULTS INFO
+            // 🔹 Search results count
             if (_searchQuery.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -210,49 +230,52 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
             ],
 
-            // Summary stats (only show when not searching)
+            // 🔹 Summary cards (Buy/Sell/Hold)
             if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem(
-                      '🟢 Buy',
-                      signalsProvider.buySignalsCount.toString(),
-                      const Color(0xFF10B981),
-                    ),
-                    Container(width: 1, height: 40, color: Colors.grey[300]),
-                    _buildStatItem(
-                      '🔴 Sell',
-                      signalsProvider.sellSignalsCount.toString(),
-                      const Color(0xFFEF4444),
-                    ),
-                    Container(width: 1, height: 40, color: Colors.grey[300]),
-                    _buildStatItem(
-                      '⚪ Hold',
-                      signalsProvider.holdSignalsCount.toString(),
-                      const Color(0xFF9CA3AF),
-                    ),
-                  ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildStatItem(
+                        '🟢 Buy',
+                        signalsProvider.buySignalsCount.toString(),
+                        const Color(0xFF10B981),
+                      ),
+                      _divider(),
+                      _buildStatItem(
+                        '🔴 Sell',
+                        signalsProvider.sellSignalsCount.toString(),
+                        const Color(0xFFEF4444),
+                      ),
+                      _divider(),
+                      _buildStatItem(
+                        '⚪ Hold',
+                        signalsProvider.holdSignalsCount.toString(),
+                        const Color(0xFF9CA3AF),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
             ],
 
-            // Signals list
+            // 🔹 Signals list
             Expanded(
               child: signalsProvider.isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -273,6 +296,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+
+      // 🔹 Floating button
       floatingActionButton: !isPremium
           ? FloatingActionButton.extended(
               onPressed: () {
@@ -283,30 +308,43 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
               backgroundColor: const Color(0xFF7C3AED),
-              icon: const Icon(Icons.upgrade),
-              label: const Text('Upgrade to Premium'),
+              icon: const Icon(Icons.workspace_premium_outlined),
+              label: const Text(
+                'Unlock Full AI Insights',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
             )
           : null,
     );
   }
 
+  Widget _divider() => Container(width: 1, height: 40, color: Colors.grey[300]);
+
   Widget _buildStatItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: color,
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           label,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 13,
             color: Color(0xFF6B7280),
+            fontWeight: FontWeight.w500,
           ),
         ),
       ],
@@ -325,7 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            isSearching 
+            isSearching
                 ? 'No signals found for "$_searchQuery"'
                 : 'No signals available',
             style: TextStyle(
@@ -340,11 +378,7 @@ class _HomeScreenState extends State<HomeScreen> {
             isSearching
                 ? 'Try searching for another stock'
                 : 'Signals update daily at 6 PM IST',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
-            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           if (isSearching) ...[
             const SizedBox(height: 16),
@@ -355,10 +389,8 @@ class _HomeScreenState extends State<HomeScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1E40AF),
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
