@@ -17,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String? _selectedFilter; // null = show all, 'BUY', 'SELL', 'HOLD'
 
   @override
   void initState() {
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _onSearchChanged(String query) {
     setState(() {
       _searchQuery = query.toUpperCase();
+      _selectedFilter = null; // Clear filter when searching
     });
   }
 
@@ -57,6 +59,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _searchController.clear();
     setState(() {
       _searchQuery = '';
+    });
+  }
+
+  void _filterBySignal(String? signalType) {
+    setState(() {
+      _selectedFilter = _selectedFilter == signalType ? null : signalType;
+      _searchQuery = ''; // Clear search when filtering
+      _searchController.clear();
     });
   }
 
@@ -82,12 +92,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final signalsProvider = Provider.of<SignalsProvider>(context);
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
 
-    final filteredSignals = _searchQuery.isEmpty
-        ? signalsProvider.signals
-        : signalsProvider.signals
-            .where((signal) =>
-                signal.symbol.toUpperCase().contains(_searchQuery))
-            .toList();
+    // Apply filters
+    List<dynamic> filteredSignals = signalsProvider.signals;
+
+    // Filter by search query
+    if (_searchQuery.isNotEmpty) {
+      filteredSignals = filteredSignals
+          .where((signal) => signal.symbol.toUpperCase().contains(_searchQuery))
+          .toList();
+    }
+
+    // Filter by signal type (BUY/SELL/HOLD)
+    if (_selectedFilter != null) {
+      filteredSignals = filteredSignals
+          .where((signal) => signal.signal.toUpperCase() == _selectedFilter)
+          .toList();
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
@@ -240,8 +260,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
 
-            // Summary cards (Buy/Sell/Hold) - Interactive
-            if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
+            // Summary cards (Buy/Sell/Hold) - Interactive and Smaller
+            if (signalsProvider.signals.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
@@ -252,33 +272,80 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         signalsProvider.buySignalsCount.toString(),
                         const Color(0xFF10B981),
                         Icons.arrow_upward_rounded,
-                        () => _handleSignalAction('Multiple', 'BUY'),
+                        () => _filterBySignal('BUY'),
+                        _selectedFilter == 'BUY',
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _buildInteractiveStatCard(
                         'Sell',
                         signalsProvider.sellSignalsCount.toString(),
                         const Color(0xFFEF4444),
                         Icons.arrow_downward_rounded,
-                        () => _handleSignalAction('Multiple', 'SELL'),
+                        () => _filterBySignal('SELL'),
+                        _selectedFilter == 'SELL',
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _buildInteractiveStatCard(
                         'Hold',
                         signalsProvider.holdSignalsCount.toString(),
                         const Color(0xFF6B7280),
                         Icons.remove_rounded,
-                        () => _handleSignalAction('Multiple', 'HOLD'),
+                        () => _filterBySignal('HOLD'),
+                        _selectedFilter == 'HOLD',
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+            ],
+
+            // Active filter indicator
+            if (_selectedFilter != null) ...[
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: _getFilterColor(_selectedFilter!).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _getFilterColor(_selectedFilter!).withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.filter_alt,
+                      size: 16,
+                      color: _getFilterColor(_selectedFilter!),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Showing $_selectedFilter signals',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _getFilterColor(_selectedFilter!),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _filterBySignal(null),
+                      child: Icon(
+                        Icons.close,
+                        size: 16,
+                        color: _getFilterColor(_selectedFilter!),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
             ],
 
             // Signals list
@@ -286,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               child: signalsProvider.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : filteredSignals.isEmpty
-                      ? _buildEmptyState(_searchQuery.isNotEmpty)
+                      ? _buildEmptyState(_searchQuery.isNotEmpty || _selectedFilter != null)
                       : ListView.builder(
                           padding: const EdgeInsets.only(bottom: 80),
                           itemCount: filteredSignals.length,
@@ -324,54 +391,79 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
+  Color _getFilterColor(String filter) {
+    switch (filter) {
+      case 'BUY':
+        return const Color(0xFF10B981);
+      case 'SELL':
+        return const Color(0xFFEF4444);
+      case 'HOLD':
+        return const Color(0xFF6B7280);
+      default:
+        return Colors.grey;
+    }
+  }
+
   Widget _buildInteractiveStatCard(
     String label,
     String value,
     Color color,
     IconData icon,
     VoidCallback onTap,
+    bool isSelected,
   ) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withOpacity(0.3), width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
+          color: isSelected ? color.withOpacity(0.15) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : color.withOpacity(0.3),
+            width: isSelected ? 2.5 : 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
         ),
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 18),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               value,
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: color,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w600,
               ),
@@ -382,20 +474,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildEmptyState(bool isSearching) {
+  Widget _buildEmptyState(bool isFiltered) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isSearching ? Icons.search_off : Icons.info_outline,
+            isFiltered ? Icons.filter_alt_off : Icons.info_outline,
             size: 64,
             color: Colors.grey[400],
           ),
           const SizedBox(height: 16),
           Text(
-            isSearching
-                ? 'No signals found for "$_searchQuery"'
+            isFiltered
+                ? 'No signals found'
                 : 'No signals available',
             style: TextStyle(
               fontSize: 18,
@@ -406,11 +498,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 8),
           Text(
-            isSearching
-                ? 'Try another stock symbol'
+            isFiltered
+                ? 'Try a different filter or search'
                 : 'Pull down to refresh',
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
+          if (isFiltered) ...[
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                _clearSearch();
+                _filterBySignal(null);
+              },
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Clear Filters'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E40AF),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -488,210 +596,4 @@ class EnhancedSignalCard extends StatelessWidget {
                         '₹${signal.currentPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF6B7280),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                // Signal Badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: signalColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: signalColor, width: 2),
-                  ),
-                  child: Text(
-                    signal.signal.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: signalColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Mini Graph
-          Container(
-            height: 80,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: LineChart(
-              LineChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: _generateMockData(),
-                    isCurved: true,
-                    color: signalColor,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: signalColor.withOpacity(0.1),
-                    ),
-                  ),
-                ],
-                minY: 0,
-                maxY: 100,
-              ),
-            ),
-          ),
-
-          // Confidence & Details
-          if (showDetails)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      const Text(
-                        'Confidence:',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF6B7280),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: LinearProgressIndicator(
-                            value: signal.confidence / 100,
-                            backgroundColor: Colors.grey[200],
-                            color: signalColor,
-                            minHeight: 8,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${signal.confidence.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: signalColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  
-                  // Analysis Factors
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey[50],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Analysis Factors:',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF374151),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'RSI: ${signal.rsi?.toStringAsFixed(1) ?? 'N/A'}',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                        if (signal.votes != null)
-                          Text(
-                            'Votes: ${signal.votes}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Action Buttons
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => onAction(signal.symbol, 'BUY'),
-                    icon: const Icon(Icons.trending_up, size: 18),
-                    label: const Text('Buy'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => onAction(signal.symbol, 'HOLD'),
-                    icon: const Icon(Icons.remove, size: 18),
-                    label: const Text('Hold'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6B7280),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () => onAction(signal.symbol, 'SELL'),
-                    icon: const Icon(Icons.trending_down, size: 18),
-                    label: const Text('Sell'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFEF4444),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+      
