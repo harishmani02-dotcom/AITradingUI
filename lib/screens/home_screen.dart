@@ -534,13 +534,68 @@ class EnhancedSignalCard extends StatelessWidget {
     }
   }
 
+  String _getSymbol() {
+    try {
+      return signal.symbol?.toString() ?? 'N/A';
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  String _getPrice() {
+    try {
+      final price = signal.currentPrice ?? signal.price ?? 0.0;
+      return '₹${price.toStringAsFixed(2)}';
+    } catch (e) {
+      return '₹0.00';
+    }
+  }
+
+  String _getSignal() {
+    try {
+      return signal.signal?.toString() ?? 'HOLD';
+    } catch (e) {
+      return 'HOLD';
+    }
+  }
+
+  double _getConfidence() {
+    try {
+      return signal.confidence?.toDouble() ?? 50.0;
+    } catch (e) {
+      return 50.0;
+    }
+  }
+
+  String _getRSI() {
+    try {
+      return signal.rsi?.toStringAsFixed(1) ?? 'N/A';
+    } catch (e) {
+      return 'N/A';
+    }
+  }
+
+  String? _getVotes() {
+    try {
+      return signal.votes?.toString();
+    } catch (e) {
+      return null;
+    }
+  }
+
   List<FlSpot> _generateMockData() {
     return List.generate(7, (i) => FlSpot(i.toDouble(), 40 + (i * 5) + (i % 2 * 10)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final signalColor = _getSignalColor(signal.signal);
+    final signalColor = _getSignalColor(_getSignal());
+    final symbol = _getSymbol();
+    final price = _getPrice();
+    final signalText = _getSignal();
+    final confidence = _getConfidence();
+    final rsi = _getRSI();
+    final votes = _getVotes();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -566,7 +621,7 @@ class EnhancedSignalCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        signal.symbol,
+                        symbol,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -575,7 +630,7 @@ class EnhancedSignalCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '₹${signal.currentPrice.toStringAsFixed(2)}',
+                        price,
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
@@ -593,7 +648,7 @@ class EnhancedSignalCard extends StatelessWidget {
                     border: Border.all(color: signalColor, width: 2),
                   ),
                   child: Text(
-                    signal.signal.toUpperCase(),
+                    signalText.toUpperCase(),
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -653,7 +708,7 @@ class EnhancedSignalCard extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: LinearProgressIndicator(
-                            value: signal.confidence / 100,
+                            value: confidence / 100,
                             backgroundColor: Colors.grey[200],
                             color: signalColor,
                             minHeight: 8,
@@ -662,7 +717,7 @@ class EnhancedSignalCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${signal.confidence.toStringAsFixed(0)}%',
+                        '${confidence.toStringAsFixed(0)}%',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -691,15 +746,15 @@ class EnhancedSignalCard extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'RSI: ${signal.rsi?.toStringAsFixed(1) ?? 'N/A'}',
+                          'RSI: $rsi',
                           style: const TextStyle(
                             fontSize: 12,
                             color: Color(0xFF6B7280),
                           ),
                         ),
-                        if (signal.votes != null)
+                        if (votes != null)
                           Text(
-                            'Votes: ${signal.votes}',
+                            'Votes: $votes',
                             style: const TextStyle(
                               fontSize: 12,
                               color: Color(0xFF6B7280),
@@ -725,7 +780,7 @@ class EnhancedSignalCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => onAction(signal.symbol, 'BUY'),
+                    onPressed: () => onAction(symbol, 'BUY'),
                     icon: const Icon(Icons.trending_up, size: 14),
                     label: const Text('Buy', style: TextStyle(fontSize: 12)),
                     style: ElevatedButton.styleFrom(
@@ -741,7 +796,7 @@ class EnhancedSignalCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => onAction(signal.symbol, 'HOLD'),
+                    onPressed: () => onAction(symbol, 'HOLD'),
                     icon: const Icon(Icons.remove, size: 14),
                     label: const Text('Hold', style: TextStyle(fontSize: 12)),
                     style: ElevatedButton.styleFrom(
@@ -757,7 +812,7 @@ class EnhancedSignalCard extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => onAction(signal.symbol, 'SELL'),
+                    onPressed: () => onAction(symbol, 'SELL'),
                     icon: const Icon(Icons.trending_down, size: 14),
                     label: const Text('Sell', style: TextStyle(fontSize: 12)),
                     style: ElevatedButton.styleFrom(
