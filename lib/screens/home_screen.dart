@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/auth_provider.dart';
 import '../providers/signals_provider.dart';
-import '../widgets/signal_card.dart';
 import 'profile_screen.dart';
 import 'subscription_screen.dart';
 
@@ -17,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String? _selectedFilter; // null = show all, 'BUY', 'SELL', 'HOLD'
+  String? _selectedFilter;
 
   @override
   void initState() {
@@ -35,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Auto-refresh when app comes to foreground
     if (state == AppLifecycleState.resumed) {
       _loadSignals();
     }
@@ -51,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _onSearchChanged(String query) {
     setState(() {
       _searchQuery = query.toUpperCase();
-      _selectedFilter = null; // Clear filter when searching
+      _selectedFilter = null;
     });
   }
 
@@ -65,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _filterBySignal(String? signalType) {
     setState(() {
       _selectedFilter = _selectedFilter == signalType ? null : signalType;
-      _searchQuery = ''; // Clear search when filtering
+      _searchQuery = '';
       _searchController.clear();
     });
   }
@@ -92,17 +90,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final signalsProvider = Provider.of<SignalsProvider>(context);
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
 
-    // Apply filters
     List<dynamic> filteredSignals = signalsProvider.signals;
 
-    // Filter by search query
     if (_searchQuery.isNotEmpty) {
       filteredSignals = filteredSignals
           .where((signal) => signal.symbol.toUpperCase().contains(_searchQuery))
           .toList();
     }
 
-    // Filter by signal type (BUY/SELL/HOLD)
     if (_selectedFilter != null) {
       filteredSignals = filteredSignals
           .where((signal) => signal.signal.toUpperCase() == _selectedFilter)
@@ -166,7 +161,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         onRefresh: _loadSignals,
         child: Column(
           children: [
-            // Info banner
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -216,7 +210,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
 
-            // Search bar
             Container(
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -260,7 +253,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
 
-            // Summary cards (Buy/Sell/Hold) - Interactive and Smaller
             if (signalsProvider.signals.isNotEmpty) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -304,7 +296,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(height: 12),
             ],
 
-            // Active filter indicator
             if (_selectedFilter != null) ...[
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -348,7 +339,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               const SizedBox(height: 12),
             ],
 
-            // Signals list
             Expanded(
               child: signalsProvider.isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -486,9 +476,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 16),
           Text(
-            isFiltered
-                ? 'No signals found'
-                : 'No signals available',
+            isFiltered ? 'No signals found' : 'No signals available',
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey[600],
@@ -498,9 +486,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 8),
           Text(
-            isFiltered
-                ? 'Try a different filter or search'
-                : 'Pull down to refresh',
+            isFiltered ? 'Try a different filter or search' : 'Pull down to refresh',
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           if (isFiltered) ...[
@@ -525,7 +511,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 }
 
-// Enhanced Signal Card Widget with Graph
 class EnhancedSignalCard extends StatelessWidget {
   final dynamic signal;
   final bool showDetails;
@@ -550,7 +535,6 @@ class EnhancedSignalCard extends StatelessWidget {
   }
 
   List<FlSpot> _generateMockData() {
-    // Generate mock price trend data
     return List.generate(7, (i) => FlSpot(i.toDouble(), 40 + (i * 5) + (i % 2 * 10)));
   }
 
@@ -573,12 +557,10 @@ class EnhancedSignalCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Header
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                // Stock Info
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -596,4 +578,203 @@ class EnhancedSignalCard extends StatelessWidget {
                         '₹${signal.currentPrice.toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontSize: 16,
-      
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: signalColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: signalColor, width: 2),
+                  ),
+                  child: Text(
+                    signal.signal.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: signalColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          Container(
+            height: 80,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: LineChart(
+              LineChartData(
+                gridData: const FlGridData(show: false),
+                titlesData: const FlTitlesData(show: false),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: _generateMockData(),
+                    isCurved: true,
+                    color: signalColor,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: const FlDotData(show: false),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: signalColor.withOpacity(0.1),
+                    ),
+                  ),
+                ],
+                minY: 0,
+                maxY: 100,
+              ),
+            ),
+          ),
+
+          if (showDetails)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Confidence:',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF6B7280),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: signal.confidence / 100,
+                            backgroundColor: Colors.grey[200],
+                            color: signalColor,
+                            minHeight: 8,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${signal.confidence.toStringAsFixed(0)}%',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: signalColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Analysis Factors:',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF374151),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'RSI: ${signal.rsi?.toStringAsFixed(1) ?? 'N/A'}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Color(0xFF6B7280),
+                          ),
+                        ),
+                        if (signal.votes != null)
+                          Text(
+                            'Votes: ${signal.votes}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => onAction(signal.symbol, 'BUY'),
+                    icon: const Icon(Icons.trending_up, size: 14),
+                    label: const Text('Buy', style: TextStyle(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF10B981),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => onAction(signal.symbol, 'HOLD'),
+                    icon: const Icon(Icons.remove, size: 14),
+                    label: const Text('Hold', style: TextStyle(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF6B7280),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => onAction(signal.symbol, 'SELL'),
+                    icon: const Icon(Icons.trending_down, size: 14),
+                    label: const Text('Sell', style: TextStyle(fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF4444),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
