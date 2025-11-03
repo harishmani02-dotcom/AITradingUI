@@ -1,4 +1,5 @@
 name: Build Android APK
+
 on:
   workflow_dispatch:
   push:
@@ -21,7 +22,7 @@ jobs:
       - name: Setup Flutter (pin exact version)
         uses: flutter-actions/setup-flutter@v2
         with:
-          flutter-version: '3.35.7'
+          version: '3.35.7'   # ✅ correct key is 'version', not 'flutter-version'
 
       - name: Show Flutter & Dart version
         run: |
@@ -30,6 +31,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Generate App Icons
+        run: flutter pub run flutter_launcher_icons
 
       - name: Run tests if present
         run: |
@@ -46,6 +50,6 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
+          name: ai_trading_signals-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
