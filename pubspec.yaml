@@ -26,11 +26,12 @@ flutter_icons:
   ios: true
   image_path: "assets/icons/finspark_ai.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icons/finspark_ai.png"
+  adaptive_icon_foreground: "assets/icons/1761905822614.jpg"
 
 - name: Generate App Icons
   run: flutter pub run flutter_launcher_icons
 flutter:
   uses-material-design: true
+
 
 
