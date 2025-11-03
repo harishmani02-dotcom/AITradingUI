@@ -2,18 +2,16 @@ name: ai_trading_signals
 description: A Flutter project.
 
 environment:
-  sdk: ">=3.5.0 <4.0.0"   
+  sdk: ">=3.5.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  
   cupertino_icons: ^1.0.5
   provider: ^6.0.5
   supabase_flutter: ^2.5.0
   google_fonts: ^6.2.0
   fl_chart: ^0.65.0
-
 
 dev_dependencies:
   flutter_test:
@@ -28,10 +26,5 @@ flutter_icons:
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icons/1761905822614.jpg"
 
-- name: Generate App Icons
-  run: flutter pub run flutter_launcher_icons
 flutter:
   uses-material-design: true
-
-
-
