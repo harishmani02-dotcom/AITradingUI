@@ -28,7 +28,9 @@ flutter_icons:
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icons/finspark_ai.png"
 
-
+- name: Generate App Icons
+  run: flutter pub run flutter_launcher_icons
 flutter:
   uses-material-design: true
+
 
