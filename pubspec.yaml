@@ -22,9 +22,10 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/icons/finspark_ai.png"
+  image_path: "assets/icons/1761905822614.png"
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icons/1761905822614.jpg"
 
 flutter:
   uses-material-design: true
+
