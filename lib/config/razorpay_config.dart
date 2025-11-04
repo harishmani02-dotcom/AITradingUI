@@ -1,7 +1,7 @@
 class RazorpayConfig {
   // TEST MODE keys (start with rzp_test_)
-  static const String keyId = 'rzp_test_YOUR_KEY_ID_HERE'; // Replace!
-  static const String keySecret = 'YOUR_KEY_SECRET_HERE'; // Replace!
+  static const String keyId = 'rzp_test_RblX1dMweqrCnO'; // Replace!
+  static const String keySecret = 'mfVqVG0bOQewuC2hxuu7RsY0'; // Replace!
   
   // Subscription amount (in paise - ₹499 = 49900 paise)
   static const int subscriptionAmount = 49900;
