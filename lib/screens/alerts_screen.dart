@@ -247,7 +247,7 @@ class _AlertsScreenState extends State<AlertsScreen> {
                   symbol: symbolController.text.toUpperCase(),
                   condition: selectedCondition,
                   targetPrice: double.parse(priceController.text),
-                  currentPrice: 0.0, // Will be updated from API
+                  currentPrice: 0.0,
                   isActive: true,
                   createdAt: DateTime.now(),
                 );
@@ -312,7 +312,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
       ),
       body: Column(
         children: [
-          // Notification Settings
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -374,8 +373,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ],
             ),
           ),
-
-          // Alert Stats
           Container(
             margin: const EdgeInsets.all(16),
             padding: const EdgeInsets.all(16),
@@ -408,8 +405,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
               ],
             ),
           ),
-
-          // Alerts List Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -434,8 +429,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-
-          // Alerts List
           Expanded(
             child: _alerts.isEmpty
                 ? Center(
@@ -564,4 +557,123 @@ class _AlertsScreenState extends State<AlertsScreen> {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF111827),
-          
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${alert.condition} ₹${alert.targetPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: alert.isActive,
+                  onChanged: (value) => _toggleAlert(alert.id),
+                  activeColor: conditionColor,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, color: Colors.grey),
+                  onPressed: () => _deleteAlert(alert.id),
+                ),
+              ],
+            ),
+            if (alert.isActive) ...[
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Current Price',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        '₹3,456.75',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF111827),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'Distance',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${((alert.targetPrice - 3456.75) / 3456.75 * 100).toStringAsFixed(2)}%',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF7C3AED),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class PriceAlert {
+  final String id;
+  final String symbol;
+  final String condition;
+  final double targetPrice;
+  final double currentPrice;
+  final bool isActive;
+  final DateTime createdAt;
+
+  PriceAlert({
+    required this.id,
+    required this.symbol,
+    required this.condition,
+    required this.targetPrice,
+    required this.currentPrice,
+    required this.isActive,
+    required this.createdAt,
+  });
+
+  PriceAlert copyWith({
+    String? id,
+    String? symbol,
+    String? condition,
+    double? targetPrice,
+    double? currentPrice,
+    bool? isActive,
+    DateTime? createdAt,
+  }) {
+    return PriceAlert(
+      id: id ?? this.id,
+      symbol: symbol ?? this.symbol,
+      condition: condition ?? this.condition,
+      targetPrice: targetPrice ?? this.targetPrice,
+      currentPrice: currentPrice ?? this.currentPrice,
+      isActive: isActive ?? this.isActive,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
