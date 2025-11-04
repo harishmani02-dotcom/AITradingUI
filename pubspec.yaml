@@ -25,12 +25,13 @@ dev_dependencies:
 flutter_icons:
   android: true
   ios: false
-image_path: "assets/icons/1761905822614.jpg"
+  image_path: "assets/icons/1761905822614.jpg"
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/icons/1761905822614.jpg"
 
 flutter:
   uses-material-design: true
+
 
 
 
