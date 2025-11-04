@@ -1,8 +1,67 @@
 import 'package:flutter/material.dart';
- 
-class SubscriptionScreen extends StatelessWidget {
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/razorpay_service.dart';
+import '../providers/auth_provider.dart';
+
+class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
- 
+
+  @override
+  State<SubscriptionScreen> createState() => _SubscriptionScreenState();
+}
+
+class _SubscriptionScreenState extends State<SubscriptionScreen> {
+  bool _isProcessing = false;
+
+  Future<void> _handlePayment() async {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = Supabase.instance.client.auth.currentUser;
+
+      if (user == null) {
+        throw Exception('User not logged in');
+      }
+
+      // Initialize Razorpay
+      final razorpayService = RazorpayService(
+        context: context,
+        userEmail: user.email ?? '',
+        userId: user.id,
+        onSuccess: (paymentId) async {
+          // Payment successful - webhook will handle activation
+          // Just navigate to home
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              '/home',
+              (route) => false,
+            );
+          }
+        },
+        onFailure: (error) {
+          setState(() => _isProcessing = false);
+        },
+      );
+
+      // Open payment checkout
+      razorpayService.openCheckout();
+    } catch (e) {
+      setState(() => _isProcessing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,134 +74,125 @@ class SubscriptionScreen extends StatelessWidget {
           ),
         ),
         backgroundColor: const Color(0xFF1E40AF),
-        foregroundColor: Colors.white,
-        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            // Pricing card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: const Color(0xFF7C3AED),
-                  width: 3,
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            children: [
+              const SizedBox(height: 20),
+              
+              // Premium Badge
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFF9F7AEA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7C3AED).withOpacity(0.3),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF7C3AED).withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  // Star icon
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFEF3C7),
-                      shape: BoxShape.circle,
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.workspace_premium,
+                      color: Colors.white,
+                      size: 64,
                     ),
-                    child: const Icon(
-                      Icons.stars,
-                      size: 48,
-                      color: Color(0xFFF59E0B),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  
-                  const Text(
-                    'Premium Access',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  
-                  // Price
-                  const Text(
-                    '₹499',
-                    style: TextStyle(
-                      fontSize: 56,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1E40AF),
-                    ),
-                  ),
-                  const Text(
-                    'per month',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  
-                  const Divider(),
-                  const SizedBox(height: 24),
-                  
-                  // Features list
-                  _buildFeature('Daily AI signals for 20+ stocks'),
-                  _buildFeature('5-method analysis (RSI, MACD, Bollinger, Volume, Patterns)'),
-                  _buildFeature('Confidence scores for every signal'),
-                  _buildFeature('Detailed vote breakdown'),
-                  _buildFeature('Historical performance data'),
-                  _buildFeature('Priority support'),
-                  
-                  const SizedBox(height: 32),
-                  
-                  // Subscribe button
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _showPaymentDialog(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF7C3AED),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        'Subscribe Now - ₹499',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Premium Access',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    RichText(
+                      text: const TextSpan(
+                        children: [
+                          TextSpan(
+                            text: '₹499',
+                            style: TextStyle(
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '/month',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // Features List
+              _buildFeatureCard(),
+
+              const SizedBox(height: 32),
+
+              // Subscribe Button
+              SizedBox(
+                width: double.infinity,
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _isProcessing ? null : _handlePayment,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7C3AED),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 5,
                   ),
-                ],
+                  child: _isProcessing
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Subscribe Now - ₹499',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Trust badge
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
+
+              const SizedBox(height: 16),
+
+              // Trust Badge
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(
-                    Icons.security,
-                    size: 20,
-                    color: Color(0xFF6B7280),
+                  Icon(
+                    Icons.verified_user,
+                    size: 16,
+                    color: Colors.grey[600],
                   ),
                   const SizedBox(width: 8),
                   Text(
@@ -154,99 +204,106 @@ class SubscriptionScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Disclaimer
-            Text(
-              'Cancel anytime. No hidden charges.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
+
+              const SizedBox(height: 32),
+
+              // Cancel Anytime Note
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F4F6),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.info_outline,
+                      color: Colors.grey[700],
+                      size: 24,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Cancel anytime from your profile\nNo hidden charges',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
- 
-  Widget _buildFeature(String text) {
+
+  Widget _buildFeatureCard() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFF7C3AED).withOpacity(0.2),
+          width: 2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'What You Get',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF111827),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildFeatureItem('Daily AI signals for 20+ stocks'),
+          _buildFeatureItem('5-method technical analysis'),
+          _buildFeatureItem('Buy/Sell confidence scores'),
+          _buildFeatureItem('RSI, MACD, Bollinger analysis'),
+          _buildFeatureItem('Volume & pattern recognition'),
+          _buildFeatureItem('Historical accuracy tracking'),
+          _buildFeatureItem('Priority customer support'),
+          _buildFeatureItem('Updates daily at 6 PM IST'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(
             Icons.check_circle,
             color: Color(0xFF10B981),
-            size: 24,
+            size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 color: Color(0xFF374151),
                 height: 1.5,
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
- 
-  void _showPaymentDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Payment Integration'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'To integrate Razorpay payment:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            SizedBox(height: 12),
-            Text('1. Add razorpay_flutter package'),
-            Text('2. Initialize with your Razorpay keys'),
-            Text('3. Handle payment success/failure'),
-            Text('4. Update subscription status via webhook'),
-            SizedBox(height: 12),
-            Text(
-              'For now, this shows a demo dialog.',
-              style: TextStyle(
-                fontSize: 12,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Payment integration coming soon!'),
-                  backgroundColor: Color(0xFF7C3AED),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF7C3AED),
-            ),
-            child: const Text('OK'),
           ),
         ],
       ),
