@@ -1,9 +1,3 @@
-(No subject)
-Harish Kumar<harishmani02@gmail.com>
-​
-Harish Kumar s m​
-CAUTION: This email originated from outside Hexaware. Do not click links or open attachments unless you recognize the sender and are sure the content is safe.
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
@@ -499,3 +493,4 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
+
