@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -20,20 +19,28 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.ai_trading_signals"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // ADD THIS: Enable MultiDex support
+        multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
+            // OPTION 1: DISABLE MINIFICATION (Quick fix for testing)
+            minifyEnabled = false
+            shrinkResources = false
+            
+            // OPTION 2: ENABLE WITH PROGUARD (Better for production)
+            // Uncomment these and comment out the lines above once proguard-rules.pro is created:
+            // minifyEnabled = true
+            // shrinkResources = true
+            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -41,4 +48,9 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // ADD THIS: MultiDex support
+    implementation("androidx.multidex:multidex:2.0.1")
 }
