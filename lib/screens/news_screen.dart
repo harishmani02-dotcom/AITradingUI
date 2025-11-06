@@ -23,7 +23,7 @@ class _NewsScreenState extends State<NewsScreen> {
 
   // API Configuration
   // Get your FREE API key from: https://newsapi.org/register
-  static const String NEWS_API_KEY = 'YOUR_API_KEY_HERE';
+  static const String NEWS_API_KEY = '35a459713e1b40f2abe8ec0f2cedd39d';
   static const String NEWS_API_URL = 'https://newsapi.org/v2/everything';
 
   @override
