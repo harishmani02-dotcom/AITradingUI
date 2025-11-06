@@ -317,11 +317,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Premium Upgrade Banner (for free users)
+            // Premium Upgrade Banner (for free users) - COMPACT VERSION
             if (!isPremium)
               Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF7C3AED), Color(0xFF9F7AEA)],
@@ -330,57 +330,57 @@ class _HomeScreenState extends State<HomeScreen> {
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFF7C3AED).withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Column(
+                child: Row(
                   children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.workspace_premium, color: Colors.white, size: 24),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'You\'re viewing 5 sample signals',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                    const Icon(
+                      Icons.workspace_premium, 
+                      color: Colors.white, 
+                      size: 20
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => const SubscriptionScreen(),
-                            ),
-                          ).then((_) {
-                            // ⭐ Refresh when returning from subscription page
-                            _handleRefresh();
-                          });
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF7C3AED),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Viewing 5 samples',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
-                        child: const Text(
-                          'Upgrade to Premium - ₹499/month',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const SubscriptionScreen(),
                           ),
+                        ).then((_) {
+                          _handleRefresh();
+                        });
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF7C3AED),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12, 
+                          vertical: 6
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                      child: const Text(
+                        'Upgrade - ₹499/mo',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
                         ),
                       ),
                     ),
