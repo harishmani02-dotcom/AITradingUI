@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/auth_provider.dart';
 import '../providers/signals_provider.dart';
 import '../widgets/signal_card.dart';
@@ -21,12 +22,13 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _isRefreshingSubscription = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadSignals();
+      _initializeScreen();
     });
   }
 
@@ -36,12 +38,119 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  /// ⭐ Initialize screen - refresh subscription status first, then load signals
+  Future<void> _initializeScreen() async {
+    await _refreshSubscriptionStatus();
+    await _loadSignals();
+  }
+
+  /// ⭐ NEW: Refresh user subscription status from database
+  Future<void> _refreshSubscriptionStatus() async {
+    if (_isRefreshingSubscription) return;
+
+    setState(() => _isRefreshingSubscription = true);
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final user = Supabase.instance.client.auth.currentUser;
+
+      if (user == null) {
+        debugPrint('⚠️ No authenticated user');
+        setState(() => _isRefreshingSubscription = false);
+        return;
+      }
+
+      debugPrint('🔄 Refreshing subscription status for user: ${user.id}');
+
+      // Query app_users table for latest subscription data
+      final response = await Supabase.instance.client
+          .from('app_users')
+          .select('subscription_status, subscription_end, email')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+      if (response != null) {
+        final isSubscribed = response['subscription_status'] ?? false;
+        final subscriptionEnd = response['subscription_end'];
+
+        debugPrint('✅ Subscription status loaded: $isSubscribed');
+        if (subscriptionEnd != null) {
+          debugPrint('📅 Subscription ends: $subscriptionEnd');
+        }
+
+        // Update auth provider with fresh data
+        await authProvider.refreshUserProfile();
+
+        // Show welcome message for premium users (only once per session)
+        if (isSubscribed && mounted) {
+          _showPremiumWelcome();
+        }
+      } else {
+        // User record doesn't exist - create it
+        debugPrint('📝 Creating user record in app_users...');
+        await Supabase.instance.client.from('app_users').insert({
+          'user_id': user.id,
+          'email': user.email,
+          'subscription_status': false,
+          'created_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+        
+        await authProvider.refreshUserProfile();
+      }
+    } catch (e) {
+      debugPrint('❌ Error refreshing subscription: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isRefreshingSubscription = false);
+      }
+    }
+  }
+
+  /// Show premium welcome message (only once)
+  void _showPremiumWelcome() {
+    // Use a flag to prevent showing multiple times
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.workspace_premium, color: Colors.white),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Welcome back, Premium Member! 🎉',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Color(0xFF7C3AED),
+        duration: Duration(seconds: 3),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  /// Load signals based on subscription status
   Future<void> _loadSignals() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final signalsProvider = Provider.of<SignalsProvider>(context, listen: false);
 
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
+    
+    debugPrint('📊 Loading signals (Premium: $isPremium)');
+    
     await signalsProvider.fetchTodaySignals(isPremium: isPremium);
+    
+    debugPrint('✅ Signals loaded: ${signalsProvider.signals.length}');
+  }
+
+  /// Handle pull-to-refresh
+  Future<void> _handleRefresh() async {
+    await _refreshSubscriptionStatus();
+    await _loadSignals();
   }
 
   void _onSearchChanged(String query) {
@@ -87,7 +196,11 @@ class _HomeScreenState extends State<HomeScreen> {
       case 4:
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ProfileScreen()),
-        ).then((_) => setState(() => _currentIndex = 0));
+        ).then((_) {
+          // Refresh when returning from profile (in case subscription changed)
+          setState(() => _currentIndex = 0);
+          _handleRefresh();
+        });
         break;
     }
   }
@@ -116,6 +229,25 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: const Color(0xFF1E40AF),
         elevation: 0,
         actions: [
+          // Refresh button
+          if (_isRefreshingSubscription)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              tooltip: 'Refresh subscription status',
+              onPressed: _handleRefresh,
+            ),
           IconButton(
             icon: const Icon(Icons.notifications_outlined, color: Colors.white),
             onPressed: () {
@@ -127,7 +259,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadSignals,
+        onRefresh: _handleRefresh,
         child: Column(
           children: [
             // AI Trend Radar Widget (Top Banner)
@@ -136,16 +268,15 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF10B981),
-                    const Color(0xFF059669),
-                  ],
+                  colors: isPremium
+                      ? [const Color(0xFF7C3AED), const Color(0xFF9F7AEA)]
+                      : [const Color(0xFF10B981), const Color(0xFF059669)],
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.radar,
+                  Icon(
+                    isPremium ? Icons.workspace_premium : Icons.radar,
                     color: Colors.white,
                     size: 32,
                   ),
@@ -154,9 +285,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'AI Trend Radar',
-                          style: TextStyle(
+                        Text(
+                          isPremium ? 'Premium Active' : 'AI Trend Radar',
+                          style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Colors.white70,
@@ -165,7 +296,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 2),
                         Text(
                           isPremium
-                              ? 'Market is Bullish 🔥'
+                              ? 'Full Access to All Signals 🎉'
                               : 'Upgrade for AI Insights',
                           style: const TextStyle(
                             fontSize: 18,
@@ -180,25 +311,100 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(
                       Icons.verified,
                       color: Colors.white,
-                      size: 24,
+                      size: 28,
                     ),
                 ],
               ),
             ),
 
-            // Premium Status Bar
+            // Premium Upgrade Banner (for free users)
+            if (!isPremium)
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C3AED), Color(0xFF9F7AEA)],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF7C3AED).withOpacity(0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.workspace_premium, color: Colors.white, size: 24),
+                        SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'You\'re viewing 5 sample signals',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const SubscriptionScreen(),
+                            ),
+                          ).then((_) {
+                            // ⭐ Refresh when returning from subscription page
+                            _handleRefresh();
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF7C3AED),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Upgrade to Premium - ₹499/month',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Status Bar
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
-                color: Color(0xFFDBEAFE),
+              decoration: BoxDecoration(
+                color: isPremium 
+                    ? const Color(0xFFF3E8FF) 
+                    : const Color(0xFFDBEAFE),
               ),
               child: Row(
                 children: [
                   Icon(
-                    isPremium ? Icons.workspace_premium : Icons.trending_up,
-                    color: isPremium ? const Color(0xFF7C3AED) : const Color(0xFF10B981),
-                    size: 24,
+                    isPremium ? Icons.verified : Icons.trending_up,
+                    color: isPremium 
+                        ? const Color(0xFF7C3AED) 
+                        : const Color(0xFF10B981),
+                    size: 20,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -206,11 +412,15 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isPremium ? 'Premium Active ✨' : 'Live AI Signals',
-                          style: const TextStyle(
-                            fontSize: 14,
+                          isPremium 
+                              ? 'All Signals Unlocked ✨' 
+                              : 'Live AI Signals (Limited)',
+                          style: TextStyle(
+                            fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF1E40AF),
+                            color: isPremium 
+                                ? const Color(0xFF7C3AED)
+                                : const Color(0xFF1E40AF),
                           ),
                         ),
                         const Text(
@@ -493,4 +703,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-
