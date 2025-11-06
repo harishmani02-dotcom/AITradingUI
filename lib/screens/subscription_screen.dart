@@ -35,29 +35,50 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         onSuccess: (paymentId) async {
           debugPrint('✅ Payment ID: $paymentId');
           
-          // Wait 2 seconds for database to update
-          await Future.delayed(const Duration(seconds: 2));
+          // Show success message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('🎉 Payment Successful! Activating subscription...'),
+                backgroundColor: Color(0xFF10B981),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+          
+          // ⭐ Wait 3 seconds for database to update
+          await Future.delayed(const Duration(seconds: 3));
           
           if (mounted) {
-            // Navigate to home and remove all previous routes
+            // ⭐ Navigate to home and remove all previous routes
             Navigator.of(context).pushNamedAndRemoveUntil(
               '/home',
-              (route) => false,
+              (route) => false, // Remove all previous routes
             );
           }
         },
         onFailure: (error) {
           debugPrint('❌ Payment failed: $error');
           setState(() => _isProcessing = false);
+          
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Payment failed: $error'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         },
       );
 
       // Open Razorpay checkout
       razorpayService.openCheckout();
-      
+     
     } catch (e) {
       setState(() => _isProcessing = false);
-      
+     
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -89,7 +110,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              
+             
               // Premium Badge
               Container(
                 padding: const EdgeInsets.all(32),
