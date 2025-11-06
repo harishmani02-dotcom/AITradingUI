@@ -30,16 +30,12 @@ class RazorpayService {
       'amount': RazorpayConfig.subscriptionAmount,
       'name': RazorpayConfig.companyName,
       'description': RazorpayConfig.description,
-      'prefill': {
-        'email': userEmail,
-      },
+      'prefill': {'email': userEmail},
       'notes': {
         'user_id': userId,
         'product': 'premium_subscription',
       },
-      'theme': {
-        'color': RazorpayConfig.brandColor,
-      }
+      'theme': {'color': RazorpayConfig.brandColor},
     };
 
     try {
@@ -50,19 +46,47 @@ class RazorpayService {
     }
   }
 
-  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+  void _handlePaymentSuccess(PaymentSuccessResponse response) async {
     debugPrint('✅ Payment Success: ${response.paymentId}');
-    onSuccess(response.paymentId ?? '');
     
-    // Show success message
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Payment Successful! 🎉\nActivating subscription...'),
-          backgroundColor: Color(0xFF10B981),
-          duration: Duration(seconds: 3),
-        ),
-      );
+    try {
+      final supabase = Supabase.instance.client;
+      final paymentId = response.paymentId ?? '';
+      
+      // Step 1: Log payment
+      await supabase.from('payments').insert({
+        'user_id': userId,
+        'razorpay_payment_id': paymentId,
+        'amount': RazorpayConfig.subscriptionAmount / 100,
+        'status': 'success',
+        'currency': 'INR',
+      });
+      
+      // Step 2: Activate subscription (30 days)
+      final subscriptionEnd = DateTime.now().add(const Duration(days: 30));
+      
+      await supabase.from('app_users').upsert({
+        'user_id': userId,
+        'subscription_status': true,
+        'subscription_end': subscriptionEnd.toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+      });
+      
+      debugPrint('✅ Subscription activated');
+      onSuccess(paymentId);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment Successful! 🎉\nPremium activated!'),
+            backgroundColor: Color(0xFF10B981),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Database Error: $e');
+      onFailure('Payment successful but activation failed');
     }
   }
 
