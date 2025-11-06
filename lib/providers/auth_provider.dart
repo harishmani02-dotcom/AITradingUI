@@ -52,6 +52,34 @@ class AuthProvider with ChangeNotifier {
       print('Error fetching user profile: $e');
     }
   }
+
+  /// ⭐ NEW: Public method to refresh user profile (called from HomeScreen)
+  /// This is used after payment to update subscription status
+  Future<void> refreshUserProfile() async {
+    if (_user == null) {
+      debugPrint('⚠️ Cannot refresh profile: No authenticated user');
+      return;
+    }
+
+    try {
+      debugPrint('🔄 Refreshing user profile for: ${_user!.id}');
+      
+      final response = await _supabase
+          .from('app_users')
+          .select()
+          .eq('user_id', _user!.id)
+          .single();
+ 
+      _userProfile = UserModel.fromJson(response);
+      
+      debugPrint('✅ User profile refreshed successfully');
+      debugPrint('   Subscription Active: ${_userProfile?.isSubscriptionActive}');
+      
+      notifyListeners();
+    } catch (e) {
+      debugPrint('❌ Error refreshing user profile: $e');
+    }
+  }
  
   Future<bool> signUp(String email, String password, String name) async {
     try {
