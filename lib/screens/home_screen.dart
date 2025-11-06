@@ -494,19 +494,19 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
             ],
 
-            // Summary Stats
+            // Summary Stats - COMPACT VERSION
             if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      color: Colors.black.withOpacity(0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
@@ -514,26 +514,26 @@ class _HomeScreenState extends State<HomeScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildStatItem(
-                      '🟢 Buy',
+                      'Buy',
                       signalsProvider.buySignalsCount.toString(),
                       const Color(0xFF10B981),
                     ),
-                    Container(width: 1, height: 40, color: Colors.grey[300]),
+                    Container(width: 1, height: 28, color: Colors.grey[300]),
                     _buildStatItem(
-                      '🔴 Sell',
+                      'Sell',
                       signalsProvider.sellSignalsCount.toString(),
                       const Color(0xFFEF4444),
                     ),
-                    Container(width: 1, height: 40, color: Colors.grey[300]),
+                    Container(width: 1, height: 28, color: Colors.grey[300]),
                     _buildStatItem(
-                      '⚪ Hold',
+                      'Hold',
                       signalsProvider.holdSignalsCount.toString(),
                       const Color(0xFF9CA3AF),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
             ],
 
             // Signals List
