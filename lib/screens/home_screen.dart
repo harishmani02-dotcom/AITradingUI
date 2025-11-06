@@ -38,13 +38,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  /// ⭐ Initialize screen - refresh subscription status first, then load signals
   Future<void> _initializeScreen() async {
     await _refreshSubscriptionStatus();
     await _loadSignals();
   }
 
-  /// ⭐ NEW: Refresh user subscription status from database
   Future<void> _refreshSubscriptionStatus() async {
     if (_isRefreshingSubscription) return;
 
@@ -62,7 +60,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       debugPrint('🔄 Refreshing subscription status for user: ${user.id}');
 
-      // Query app_users table for latest subscription data
       final response = await Supabase.instance.client
           .from('app_users')
           .select('subscription_status, subscription_end, email')
@@ -78,15 +75,12 @@ class _HomeScreenState extends State<HomeScreen> {
           debugPrint('📅 Subscription ends: $subscriptionEnd');
         }
 
-        // Update auth provider with fresh data
         await authProvider.refreshUserProfile();
 
-        // Show welcome message for premium users (only once per session)
         if (isSubscribed && mounted) {
           _showPremiumWelcome();
         }
       } else {
-        // User record doesn't exist - create it
         debugPrint('📝 Creating user record in app_users...');
         await Supabase.instance.client.from('app_users').insert({
           'user_id': user.id,
@@ -107,9 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Show premium welcome message (only once)
   void _showPremiumWelcome() {
-    // Use a flag to prevent showing multiple times
     if (!mounted) return;
     
     ScaffoldMessenger.of(context).showSnackBar(
@@ -133,7 +125,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  /// Load signals based on subscription status
   Future<void> _loadSignals() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final signalsProvider = Provider.of<SignalsProvider>(context, listen: false);
@@ -147,7 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
     debugPrint('✅ Signals loaded: ${signalsProvider.signals.length}');
   }
 
-  /// Handle pull-to-refresh
   Future<void> _handleRefresh() async {
     await _refreshSubscriptionStatus();
     await _loadSignals();
@@ -173,10 +163,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _currentIndex = index;
     });
 
-    // Navigate to different screens
     switch (index) {
       case 0:
-        // Already on Home
         break;
       case 1:
         Navigator.of(context).push(
@@ -197,7 +185,6 @@ class _HomeScreenState extends State<HomeScreen> {
         Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ProfileScreen()),
         ).then((_) {
-          // Refresh when returning from profile (in case subscription changed)
           setState(() => _currentIndex = 0);
           _handleRefresh();
         });
@@ -229,7 +216,6 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: const Color(0xFF1E40AF),
         elevation: 0,
         actions: [
-          // Refresh button
           if (_isRefreshingSubscription)
             const Padding(
               padding: EdgeInsets.all(16.0),
@@ -262,10 +248,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _handleRefresh,
         child: Column(
           children: [
-            // AI Trend Radar Widget (Top Banner)
+            // COMPACT Top Banner - Reduced to Half Size
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isPremium
@@ -278,9 +264,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     isPremium ? Icons.workspace_premium : Icons.radar,
                     color: Colors.white,
-                    size: 32,
+                    size: 24,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -288,18 +274,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           isPremium ? 'Premium Active' : 'AI Trend Radar',
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: Colors.white70,
                           ),
                         ),
-                        const SizedBox(height: 2),
                         Text(
                           isPremium
                               ? 'Full Access to All Signals 🎉'
                               : 'Upgrade for AI Insights',
                           style: const TextStyle(
-                            fontSize: 18,
+                            fontSize: 14,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -311,26 +296,26 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(
                       Icons.verified,
                       color: Colors.white,
-                      size: 28,
+                      size: 22,
                     ),
                 ],
               ),
             ),
 
-            // Premium Upgrade Banner (for free users) - COMPACT VERSION
+            // COMPACT Premium Upgrade Banner (Free Users)
             if (!isPremium)
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF7C3AED), Color(0xFF9F7AEA)],
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF7C3AED).withOpacity(0.3),
-                      blurRadius: 8,
+                      color: const Color(0xFF7C3AED).withOpacity(0.25),
+                      blurRadius: 6,
                       offset: const Offset(0, 2),
                     ),
                   ],
@@ -340,7 +325,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(
                       Icons.workspace_premium, 
                       color: Colors.white, 
-                      size: 20
+                      size: 18
                     ),
                     const SizedBox(width: 8),
                     const Expanded(
@@ -348,7 +333,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Viewing 5 samples',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -367,8 +352,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xFF7C3AED),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12, 
-                          vertical: 6
+                          horizontal: 10, 
+                          vertical: 5
                         ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -380,7 +365,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         'Upgrade - ₹499/mo',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 11,
+                          fontSize: 10,
                         ),
                       ),
                     ),
@@ -388,10 +373,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-            // Status Bar
+            // COMPACT Status Bar
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isPremium 
                     ? const Color(0xFFF3E8FF) 
@@ -404,33 +389,28 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: isPremium 
                         ? const Color(0xFF7C3AED) 
                         : const Color(0xFF10B981),
-                    size: 20,
+                    size: 16,
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isPremium 
-                              ? 'All Signals Unlocked ✨' 
-                              : 'Live AI Signals (Limited)',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: isPremium 
-                                ? const Color(0xFF7C3AED)
-                                : const Color(0xFF1E40AF),
-                          ),
-                        ),
-                        const Text(
-                          'Updated daily at 6 PM IST',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      isPremium 
+                          ? 'All Signals Unlocked ✨' 
+                          : 'Live AI Signals (Limited)',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isPremium 
+                            ? const Color(0xFF7C3AED)
+                            : const Color(0xFF1E40AF),
+                      ),
+                    ),
+                  ),
+                  const Text(
+                    'Updated daily at 6 PM IST',
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Color(0xFF6B7280),
                     ),
                   ),
                 ],
