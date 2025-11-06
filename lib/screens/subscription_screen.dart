@@ -15,27 +15,31 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _isProcessing = false;
 
   Future<void> _handlePayment() async {
+    // Prevent double-tap
     if (_isProcessing) return;
 
     setState(() => _isProcessing = true);
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final user = Supabase.instance.client.auth.currentUser;
 
       if (user == null) {
-        throw Exception('User not logged in');
+        throw Exception('Please login first');
       }
 
-      // Initialize Razorpay
+      // Initialize Razorpay payment
       final razorpayService = RazorpayService(
         context: context,
         userEmail: user.email ?? '',
         userId: user.id,
         onSuccess: (paymentId) async {
-          // Payment successful - webhook will handle activation
-          // Just navigate to home
+          debugPrint('✅ Payment ID: $paymentId');
+          
+          // Wait 2 seconds for database to update
+          await Future.delayed(const Duration(seconds: 2));
+          
           if (mounted) {
+            // Navigate to home and remove all previous routes
             Navigator.of(context).pushNamedAndRemoveUntil(
               '/home',
               (route) => false,
@@ -43,14 +47,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           }
         },
         onFailure: (error) {
+          debugPrint('❌ Payment failed: $error');
           setState(() => _isProcessing = false);
         },
       );
 
-      // Open payment checkout
+      // Open Razorpay checkout
       razorpayService.openCheckout();
+      
     } catch (e) {
       setState(() => _isProcessing = false);
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
