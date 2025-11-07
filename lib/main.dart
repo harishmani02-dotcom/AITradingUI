@@ -19,6 +19,7 @@ import 'screens/home_screen.dart';
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
+  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }
@@ -70,6 +71,7 @@ class AuthWrapper extends StatelessWidget {
     }
   }
 }
+
 
 
 
