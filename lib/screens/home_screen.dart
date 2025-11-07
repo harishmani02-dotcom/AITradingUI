@@ -417,49 +417,54 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // Search Bar
+            // COMPACT Search Bar
             Container(
-              margin: const EdgeInsets.all(16),
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
+                style: const TextStyle(fontSize: 13),
                 decoration: InputDecoration(
-                  hintText: 'Search stocks (e.g., RELIANCE, TCS, INFY)',
+                  hintText: 'Search stocks (e.g., RELIANCE, TCS...)',
                   hintStyle: TextStyle(
                     color: Colors.grey[400],
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                   prefixIcon: const Icon(
                     Icons.search,
                     color: Color(0xFF1E40AF),
+                    size: 20,
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          icon: const Icon(Icons.clear, color: Colors.grey, size: 18),
                           onPressed: _clearSearch,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
                         )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                    horizontal: 12,
+                    vertical: 8,
                   ),
+                  isDense: true,
                 ),
               ),
             ),
@@ -494,7 +499,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
             ],
 
-            // Summary Stats - COMPACT VERSION
+            // COMPACT Summary Stats
             if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
