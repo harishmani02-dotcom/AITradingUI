@@ -1,189 +1,80 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
-class StockMover {
-  final String symbol;
-  final String name;
-  final double price;
-  final double change;
-  final double changePercent;
-  final String volume;
-  final String signal;
-
-  StockMover({
-    required this.symbol,
-    required this.name,
-    required this.price,
-    required this.change,
-    required this.changePercent,
-    required this.volume,
-    required this.signal,
-  });
-
-  factory StockMover.fromJson(Map<String, dynamic> json) {
-    return StockMover(
-      symbol: json['symbol'] ?? '',
-      name: json['name'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      change: (json['change'] ?? 0).toDouble(),
-      changePercent: (json['changePercent'] ?? 0).toDouble(),
-      volume: json['volume'] ?? '0',
-      signal: json['signal'] ?? 'Hold',
-    );
-  }
-}
-
-class StockApiService {
-  // Free Yahoo Finance API endpoint
-  static const String _baseUrl = 'https://query1.finance.yahoo.com/v8/finance/chart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+ 
+class AIService {
+  static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
   
-  // Indian stock symbols (NSE)
-  static final List<Map<String, String>> nseStocks = [
-    {'symbol': 'TCS.NS', 'name': 'Tata Consultancy Services'},
-    {'symbol': 'RELIANCE.NS', 'name': 'Reliance Industries'},
-    {'symbol': 'INFY.NS', 'name': 'Infosys Ltd'},
-    {'symbol': 'HDFCBANK.NS', 'name': 'HDFC Bank'},
-    {'symbol': 'ICICIBANK.NS', 'name': 'ICICI Bank'},
-    {'symbol': 'TATASTEEL.NS', 'name': 'Tata Steel'},
-    {'symbol': 'HINDALCO.NS', 'name': 'Hindalco Industries'},
-    {'symbol': 'JSWSTEEL.NS', 'name': 'JSW Steel'},
-    {'symbol': 'COALINDIA.NS', 'name': 'Coal India'},
-    {'symbol': 'VEDL.NS', 'name': 'Vedanta Ltd'},
-    {'symbol': 'YESBANK.NS', 'name': 'Yes Bank'},
-    {'symbol': 'BANKBARODA.NS', 'name': 'Bank of Baroda'},
-    {'symbol': 'IDEA.NS', 'name': 'Vodafone Idea'},
-    {'symbol': 'SUZLON.NS', 'name': 'Suzlon Energy'},
-    {'symbol': 'TATAMOTORS.NS', 'name': 'Tata Motors'},
-  ];
-  
-  /// Fetch Top Gainers
-  Future<List<StockMover>> fetchTopGainers() async {
-    List<StockMover> allStocks = await _fetchAllStocks();
-    allStocks.sort((a, b) => b.changePercent.compareTo(a.changePercent));
-    return allStocks.take(5).toList();
-  }
-  
-  /// Fetch Top Losers
-  Future<List<StockMover>> fetchTopLosers() async {
-    List<StockMover> allStocks = await _fetchAllStocks();
-    allStocks.sort((a, b) => a.changePercent.compareTo(b.changePercent));
-    return allStocks.take(5).toList();
-  }
-  
-  /// Fetch Volume Buzzers
-  Future<List<StockMover>> fetchVolumeBuzzers() async {
-    List<StockMover> allStocks = await _fetchAllStocks();
-    allStocks.sort((a, b) => _parseVolume(b.volume).compareTo(_parseVolume(a.volume)));
-    return allStocks.take(5).toList();
-  }
-  
-  /// Fetch all stocks data
-  Future<List<StockMover>> _fetchAllStocks() async {
-    List<StockMover> stocks = [];
-    
-    for (var stock in nseStocks) {
-      try {
-        final stockData = await _fetchStockData(stock['symbol']!, stock['name']!);
-        if (stockData != null) {
-          stocks.add(stockData);
-        }
-        // Small delay to avoid rate limiting
-        await Future.delayed(const Duration(milliseconds: 200));
-      } catch (e) {
-        print('Error fetching ${stock['symbol']}: $e');
-      }
-    }
-    
-    return stocks;
-  }
-  
-  /// Fetch individual stock data from Yahoo Finance
-  Future<StockMover?> _fetchStockData(String symbol, String name) async {
+  // Get API key from .env file
+  static String get _apiKey => dotenv.env['GROQ_API_KEY'] ?? '';
+ 
+  // System prompt to make AI act as a trading assistant
+  static const String _systemPrompt = '''You are an expert Indian stock market trading assistant with deep knowledge of:
+- NSE and BSE stocks
+- Technical analysis (RSI, MACD, Moving Averages, Support/Resistance)
+- Fundamental analysis
+- Market trends and sentiment
+- Indian stock market regulations
+ 
+Provide clear, concise, and actionable insights. Use emojis appropriately. 
+When discussing stocks, mention current price levels, support/resistance, and trends.
+Always remind users to do their own research and that this is not financial advice.
+Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks like TCS, RELIANCE, INFY, HDFC, etc.)''';
+ 
+  /// Send message to AI and get response
+  static Future<String> getAIResponse(String userMessage) async {
     try {
-      final url = Uri.parse('$_baseUrl/$symbol?interval=1d&range=1d');
-      
-      final response = await http.get(url).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          throw Exception('Request timeout');
+      // Validate API key
+      if (_apiKey.isEmpty || _apiKey == 'your_groq_api_key_here') {
+        return '⚠️ API key not configured!\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a FREE API key\n3. Add it to your .env file:\nGROQ_API_KEY=gsk_your_key_here';
+      }
+ 
+      final response = await http.post(
+        Uri.parse(_baseUrl),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
         },
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        
-        // Extract quote data
-        final result = data['chart']['result'][0];
-        final meta = result['meta'];
-        final indicators = result['indicators']['quote'][0];
-        
-        double currentPrice = (meta['regularMarketPrice'] ?? 0).toDouble();
-        double previousClose = (meta['previousClose'] ?? 0).toDouble();
-        
-        if (currentPrice == 0 || previousClose == 0) {
-          return null;
-        }
-        
-        double change = currentPrice - previousClose;
-        double changePercent = (change / previousClose) * 100;
-        
-        // Volume data
-        List<dynamic>? volumes = indicators['volume'];
-        int totalVolume = 0;
-        
-        if (volumes != null && volumes.isNotEmpty) {
-          for (var vol in volumes) {
-            if (vol != null && vol is int) {
-              totalVolume += vol;
+        body: jsonEncode({
+          'model': 'llama-3.3-70b-versatile', // UPDATED MODEL - Currently supported
+          'messages': [
+            {
+              'role': 'system',
+              'content': _systemPrompt,
+            },
+            {
+              'role': 'user',
+              'content': userMessage,
             }
-          }
-        }
-        
-        return StockMover(
-          symbol: symbol.replaceAll('.NS', ''),
-          name: name,
-          price: currentPrice,
-          change: change,
-          changePercent: changePercent,
-          volume: _formatVolume(totalVolume),
-          signal: _generateSignal(changePercent),
-        );
+          ],
+          'temperature': 0.7,
+          'max_tokens': 1024,
+          'top_p': 1,
+          'stream': false,
+        }),
+      );
+ 
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final aiMessage = data['choices'][0]['message']['content'];
+        return aiMessage.trim();
+      } else if (response.statusCode == 401) {
+        return '🔑 Invalid API key!\n\nYour API key is incorrect.\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a new API key\n3. Update your .env file:\nGROQ_API_KEY=gsk_your_new_key';
+      } else if (response.statusCode == 400) {
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['error']?['message'] ?? 'Bad request';
+        return '❌ API Error 400:\n$errorMessage\n\nPlease check:\n1. API key is correct\n2. Model name is valid\n3. Request format is correct';
+      } else if (response.statusCode == 429) {
+        return '⏳ Rate limit exceeded!\n\nToo many requests. Please wait a moment and try again.';
       } else {
-        print('API Error for $symbol: ${response.statusCode}');
-        return null;
+        return '❌ Error ${response.statusCode}\n\nResponse: ${response.body}\n\nPlease try again or contact support.';
       }
     } catch (e) {
-      print('Exception fetching $symbol: $e');
-      return null;
+      if (e.toString().contains('SocketException') || e.toString().contains('HandshakeException')) {
+        return '📡 No internet connection.\n\nPlease check:\n1. WiFi/Mobile data is ON\n2. Internet is working\n3. Try again';
+      }
+      return '❌ Unexpected Error:\n${e.toString()}\n\nPlease try again.';
     }
-  }
-  
-  /// Generate Buy/Hold/Sell signal based on change percentage
-  String _generateSignal(double changePercent) {
-    if (changePercent > 2.0) return 'Buy';
-    if (changePercent < -2.0) return 'Sell';
-    return 'Hold';
-  }
-  
-  /// Format volume to readable string (e.g., 1.5M, 250K)
-  String _formatVolume(int volume) {
-    if (volume >= 1000000) {
-      return '${(volume / 1000000).toStringAsFixed(1)}M';
-    } else if (volume >= 1000) {
-      return '${(volume / 1000).toStringAsFixed(1)}K';
-    }
-    return volume.toString();
-  }
-  
-  /// Parse volume string back to number for sorting
-  double _parseVolume(String volume) {
-    if (volume.isEmpty) return 0;
-    
-    String numPart = volume.replaceAll(RegExp(r'[^0-9.]'), '');
-    double num = double.tryParse(numPart) ?? 0;
-    
-    if (volume.contains('M')) return num * 1000000;
-    if (volume.contains('K')) return num * 1000;
-    return num;
   }
 }
+ 
