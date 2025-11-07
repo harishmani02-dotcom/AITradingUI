@@ -1,7 +1,7 @@
 class RazorpayConfig {
-  // TEST MODE keys (start with rzp_test_)
-  static const String keyId = 'rzp_test_RblX1dMweqrCnO'; // Replace!
-  static const String keySecret = 'mfVqVG0bOQewuC2hxuu7RsY0'; // Replace!
+  // Live MODE keys (start with rzp_test_)
+  static const String keyId = 'rzp_live_RcukgWczq3ctBB'; // Replace!
+  static const String keySecret = '3kcApoYuV3qTUjNZRa1E4bpa'; // Replace!
   
   // Subscription amount (in paise - ₹499 = 49900 paise)
   static const int subscriptionAmount = 49900;
@@ -13,4 +13,7 @@ class RazorpayConfig {
   
   // Colors
   static const String brandColor = '#7C3AED'; // Purple
+
+  // ⭐ NEW: Environment flag
+  static const bool isLiveMode = true; //
 }
