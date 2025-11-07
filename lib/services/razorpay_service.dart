@@ -29,6 +29,10 @@ class RazorpayService {
 
   /// Opens Razorpay payment checkout
   void openCheckout() {
+     // ⭐ Log environment mode
+  debugPrint('🔧 Razorpay Mode: ${RazorpayConfig.isLiveMode ? "LIVE 💰" : "TEST 🧪"}');
+  debugPrint('🔑 Using Key ID: ${RazorpayConfig.keyId}');
+    
     var options = {
       'key': RazorpayConfig.keyId,
       'amount': RazorpayConfig.subscriptionAmount, // in paise
