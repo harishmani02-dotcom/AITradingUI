@@ -29,8 +29,6 @@ Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks li
         return '⚠️ API key not configured!\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a FREE API key\n3. Add it to your .env file:\nGROQ_API_KEY=gsk_your_key_here';
       }
 
-      print('🔑 Using API Key: ${_apiKey.substring(0, 10)}...'); // Debug log
-
       final response = await http.post(
         Uri.parse(_baseUrl),
         headers: {
@@ -38,7 +36,7 @@ Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks li
           'Authorization': 'Bearer $_apiKey',
         },
         body: jsonEncode({
-          'model': 'llama-3.1-70b-versatile',
+          'model': 'llama-3.3-70b-versatile', // UPDATED MODEL - Currently supported
           'messages': [
             {
               'role': 'system',
@@ -56,9 +54,6 @@ Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks li
         }),
       );
 
-      print('📡 Response Status: ${response.statusCode}'); // Debug log
-      print('📡 Response Body: ${response.body}'); // Debug log
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final aiMessage = data['choices'][0]['message']['content'];
@@ -75,7 +70,6 @@ Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks li
         return '❌ Error ${response.statusCode}\n\nResponse: ${response.body}\n\nPlease try again or contact support.';
       }
     } catch (e) {
-      print('❌ Exception: $e'); // Debug log
       if (e.toString().contains('SocketException') || e.toString().contains('HandshakeException')) {
         return '📡 No internet connection.\n\nPlease check:\n1. WiFi/Mobile data is ON\n2. Internet is working\n3. Try again';
       }
