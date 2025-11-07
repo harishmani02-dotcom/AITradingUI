@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/ai_service.dart';
 
 class AIChatScreen extends StatefulWidget {
   const AIChatScreen({super.key});
@@ -38,14 +39,14 @@ class _AIChatScreenState extends State<AIChatScreen> {
   void _addWelcomeMessage() {
     setState(() {
       _messages.add(ChatMessage(
-        text: "👋 Hello! I'm your AI trading assistant. Ask me anything about stocks, market trends, or technical analysis.",
+        text: "👋 Hello! I'm your AI trading assistant powered by Llama 3.1. Ask me anything about Indian stocks, market trends, or technical analysis!",
         isUser: false,
         timestamp: DateTime.now(),
       ));
     });
   }
 
-  void _sendMessage(String text) {
+  void _sendMessage(String text) async {
     if (text.trim().isEmpty) return;
 
     setState(() {
@@ -60,39 +61,30 @@ class _AIChatScreenState extends State<AIChatScreen> {
     _messageController.clear();
     _scrollToBottom();
 
-    // Simulate AI response
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      // Get AI response from Groq API
+      final aiResponse = await AIService.getAIResponse(text);
+      
       setState(() {
         _messages.add(ChatMessage(
-          text: _getAIResponse(text),
+          text: aiResponse,
           isUser: false,
           timestamp: DateTime.now(),
         ));
         _isTyping = false;
       });
       _scrollToBottom();
-    });
-  }
-
-  String _getAIResponse(String query) {
-    // Simple response logic - Replace with actual AI API
-    final lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.contains('top movers') || lowerQuery.contains('gainers')) {
-      return "📈 Today's top movers:\n\n1. TCS (+3.2%) - Strong earnings\n2. RELIANCE (+2.8%) - New deal announcement\n3. INFY (+2.1%) - Guidance upgrade\n\nWould you like detailed analysis on any of these?";
-    } else if (lowerQuery.contains('support') || lowerQuery.contains('level')) {
-      return "🎯 TCS Technical Levels:\n\nSupport: ₹3,420 | ₹3,380\nResistance: ₹3,520 | ₹3,580\nCurrent: ₹3,456\n\nThe stock is trading near support. Watch for bounce or breakdown.";
-    } else if (lowerQuery.contains('buy') || lowerQuery.contains('stocks')) {
-      return "💡 Top AI-recommended stocks for this week:\n\n1. HDFCBANK - Buy above ₹1,645\n2. TCS - Hold current positions\n3. RELIANCE - Watch for dip buying opportunity\n\nRemember: Always do your own research!";
-    } else if (lowerQuery.contains('trend') || lowerQuery.contains('market')) {
-      return "📊 Market Analysis:\n\nNIFTY: Bullish momentum\nBANKNIFTY: Consolidating\nSentiment: Moderately positive\n\nKey levels to watch: 19,500 support, 19,850 resistance";
-    } else if (lowerQuery.contains('reliance')) {
-      return "🔍 RELIANCE Analysis:\n\nCurrent: ₹2,456\nTrend: Bullish\nRSI: 58 (Neutral)\nMACD: Buy signal\n\nRecent news: Strong Q4 results. Recommendation: Buy on dips near ₹2,420";
-    } else if (lowerQuery.contains('rsi') || lowerQuery.contains('infy')) {
-      return "📉 INFOSYS (INFY) RSI Analysis:\n\nRSI(14): 62.5\nStatus: Neutral to slightly overbought\n\nThe stock has room to move higher. Watch for RSI above 70 for overbought conditions.";
+    } catch (e) {
+      setState(() {
+        _messages.add(ChatMessage(
+          text: "❌ Sorry, I encountered an error: ${e.toString()}",
+          isUser: false,
+          timestamp: DateTime.now(),
+        ));
+        _isTyping = false;
+      });
+      _scrollToBottom();
     }
-    
-    return "I understand you're asking about: \"$query\"\n\nI can help you with:\n• Stock analysis\n• Technical indicators\n• Market trends\n• Support/resistance levels\n• Buy/sell recommendations\n\nPlease ask a specific question!";
   }
 
   void _scrollToBottom() {
@@ -134,7 +126,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   ),
                 ),
                 Text(
-                  'Always here to help',
+                  'Powered by Llama 3.1',
                   style: TextStyle(
                     fontSize: 11,
                     color: Colors.white70,
@@ -265,18 +257,23 @@ class _AIChatScreenState extends State<AIChatScreen> {
                       maxLines: null,
                       textInputAction: TextInputAction.send,
                       onSubmitted: _sendMessage,
+                      enabled: !_isTyping,
                     ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF7C3AED),
+                  decoration: BoxDecoration(
+                    color: _isTyping 
+                        ? Colors.grey 
+                        : const Color(0xFF7C3AED),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                    onPressed: () => _sendMessage(_messageController.text),
+                    onPressed: _isTyping 
+                        ? null 
+                        : () => _sendMessage(_messageController.text),
                   ),
                 ),
               ],
