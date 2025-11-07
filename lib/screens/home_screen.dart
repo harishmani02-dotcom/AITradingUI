@@ -248,10 +248,10 @@ class _HomeScreenState extends State<HomeScreen> {
         onRefresh: _handleRefresh,
         child: Column(
           children: [
-            // COMPACT Top Banner - Reduced to Half Size
+            // 1. TOP BANNER - 50% REDUCED
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: isPremium
@@ -264,9 +264,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     isPremium ? Icons.workspace_premium : Icons.radar,
                     color: Colors.white,
-                    size: 24,
+                    size: 12,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 5),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -274,7 +274,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           isPremium ? 'Premium Active' : 'AI Trend Radar',
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 6,
                             fontWeight: FontWeight.w600,
                             color: Colors.white70,
                           ),
@@ -284,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ? 'Full Access to All Signals 🎉'
                               : 'Upgrade for AI Insights',
                           style: const TextStyle(
-                            fontSize: 14,
+                            fontSize: 7,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
@@ -296,27 +296,27 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(
                       Icons.verified,
                       color: Colors.white,
-                      size: 22,
+                      size: 11,
                     ),
                 ],
               ),
             ),
 
-            // COMPACT Premium Upgrade Banner (Free Users)
+            // 2. PREMIUM BANNER - 50% REDUCED
             if (!isPremium)
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [Color(0xFF7C3AED), Color(0xFF9F7AEA)],
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFF7C3AED).withOpacity(0.25),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
@@ -325,15 +325,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     const Icon(
                       Icons.workspace_premium, 
                       color: Colors.white, 
-                      size: 18
+                      size: 9
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
                     const Expanded(
                       child: Text(
                         'Viewing 5 samples',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 6,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -352,20 +352,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         backgroundColor: Colors.white,
                         foregroundColor: const Color(0xFF7C3AED),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10, 
-                          vertical: 5
+                          horizontal: 5, 
+                          vertical: 3
                         ),
                         minimumSize: Size.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(3),
                         ),
                       ),
                       child: const Text(
                         'Upgrade - ₹499/mo',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          fontSize: 10,
+                          fontSize: 5,
                         ),
                       ),
                     ),
@@ -373,10 +373,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-            // COMPACT Status Bar
+            // 3. STATUS BAR - 50% REDUCED
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
               decoration: BoxDecoration(
                 color: isPremium 
                     ? const Color(0xFFF3E8FF) 
@@ -389,16 +389,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: isPremium 
                         ? const Color(0xFF7C3AED) 
                         : const Color(0xFF10B981),
-                    size: 16,
+                    size: 8,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       isPremium 
                           ? 'All Signals Unlocked ✨' 
                           : 'Live AI Signals (Limited)',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 6,
                         fontWeight: FontWeight.w600,
                         color: isPremium 
                             ? const Color(0xFF7C3AED)
@@ -409,7 +409,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Text(
                     'Updated daily at 6 PM IST',
                     style: TextStyle(
-                      fontSize: 9,
+                      fontSize: 5,
                       color: Color(0xFF6B7280),
                     ),
                   ),
@@ -417,52 +417,52 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // COMPACT Search Bar
+            // 4. SEARCH BAR - 50% REDUCED
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(5),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
+                    blurRadius: 2,
+                    offset: const Offset(0, 0.5),
                   ),
                 ],
               ),
               child: TextField(
                 controller: _searchController,
                 onChanged: _onSearchChanged,
-                style: const TextStyle(fontSize: 13),
+                style: const TextStyle(fontSize: 7),
                 decoration: InputDecoration(
                   hintText: 'Search stocks (e.g., RELIANCE, TCS...)',
                   hintStyle: TextStyle(
                     color: Colors.grey[400],
-                    fontSize: 12,
+                    fontSize: 6,
                   ),
                   prefixIcon: const Icon(
                     Icons.search,
                     color: Color(0xFF1E40AF),
-                    size: 20,
+                    size: 10,
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.grey, size: 18),
+                          icon: const Icon(Icons.clear, color: Colors.grey, size: 9),
                           onPressed: _clearSearch,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         )
                       : null,
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(5),
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
                   fillColor: Colors.white,
                   contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
+                    horizontal: 6,
+                    vertical: 4,
                   ),
                   isDense: true,
                 ),
@@ -499,19 +499,19 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 8),
             ],
 
-            // COMPACT Summary Stats
+            // 5. SUMMARY STATS - 50% REDUCED
             if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
               Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                margin: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(5),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.04),
-                      blurRadius: 6,
-                      offset: const Offset(0, 1),
+                      blurRadius: 3,
+                      offset: const Offset(0, 0.5),
                     ),
                   ],
                 ),
@@ -523,13 +523,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       signalsProvider.buySignalsCount.toString(),
                       const Color(0xFF10B981),
                     ),
-                    Container(width: 1, height: 28, color: Colors.grey[300]),
+                    Container(width: 1, height: 14, color: Colors.grey[300]),
                     _buildStatItem(
                       'Sell',
                       signalsProvider.sellSignalsCount.toString(),
                       const Color(0xFFEF4444),
                     ),
-                    Container(width: 1, height: 28, color: Colors.grey[300]),
+                    Container(width: 1, height: 14, color: Colors.grey[300]),
                     _buildStatItem(
                       'Hold',
                       signalsProvider.holdSignalsCount.toString(),
@@ -538,7 +538,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 6),
             ],
 
             // Signals List
@@ -617,16 +617,16 @@ class _HomeScreenState extends State<HomeScreen> {
         Text(
           value,
           style: TextStyle(
-            fontSize: 24,
+            fontSize: 12,
             fontWeight: FontWeight.bold,
             color: color,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 2),
         Text(
           label,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 6,
             color: Color(0xFF6B7280),
           ),
         ),
