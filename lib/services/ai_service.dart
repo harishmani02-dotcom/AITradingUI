@@ -24,9 +24,12 @@ Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks li
   /// Send message to AI and get response
   static Future<String> getAIResponse(String userMessage) async {
     try {
-      if (_apiKey.isEmpty) {
-        return '⚠️ API key not configured. Please add your Groq API key to the .env file.';
+      // Validate API key
+      if (_apiKey.isEmpty || _apiKey == 'your_groq_api_key_here') {
+        return '⚠️ API key not configured!\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a FREE API key\n3. Add it to your .env file:\nGROQ_API_KEY=gsk_your_key_here';
       }
+
+      print('🔑 Using API Key: ${_apiKey.substring(0, 10)}...'); // Debug log
 
       final response = await http.post(
         Uri.parse(_baseUrl),
@@ -35,7 +38,7 @@ Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks li
           'Authorization': 'Bearer $_apiKey',
         },
         body: jsonEncode({
-          'model': 'llama-3.1-70b-versatile', // Fast and powerful model
+          'model': 'llama-3.1-70b-versatile',
           'messages': [
             {
               'role': 'system',
@@ -53,75 +56,30 @@ Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks li
         }),
       );
 
+      print('📡 Response Status: ${response.statusCode}'); // Debug log
+      print('📡 Response Body: ${response.body}'); // Debug log
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final aiMessage = data['choices'][0]['message']['content'];
         return aiMessage.trim();
       } else if (response.statusCode == 401) {
-        return '🔑 Invalid API key. Please check your Groq API key in .env file.';
+        return '🔑 Invalid API key!\n\nYour API key is incorrect.\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a new API key\n3. Update your .env file:\nGROQ_API_KEY=gsk_your_new_key';
+      } else if (response.statusCode == 400) {
+        final errorData = jsonDecode(response.body);
+        final errorMessage = errorData['error']?['message'] ?? 'Bad request';
+        return '❌ API Error 400:\n$errorMessage\n\nPlease check:\n1. API key is correct\n2. Model name is valid\n3. Request format is correct';
       } else if (response.statusCode == 429) {
-        return '⏳ Too many requests. Please wait a moment and try again.';
+        return '⏳ Rate limit exceeded!\n\nToo many requests. Please wait a moment and try again.';
       } else {
-        return '❌ Error: ${response.statusCode}. Please try again.';
+        return '❌ Error ${response.statusCode}\n\nResponse: ${response.body}\n\nPlease try again or contact support.';
       }
     } catch (e) {
-      if (e.toString().contains('SocketException')) {
-        return '📡 No internet connection. Please check your network.';
+      print('❌ Exception: $e'); // Debug log
+      if (e.toString().contains('SocketException') || e.toString().contains('HandshakeException')) {
+        return '📡 No internet connection.\n\nPlease check:\n1. WiFi/Mobile data is ON\n2. Internet is working\n3. Try again';
       }
-      return '❌ Error: ${e.toString()}';
-    }
-  }
-
-  /// Get streaming response (optional - for real-time typing effect)
-  static Stream<String> getAIResponseStream(String userMessage) async* {
-    try {
-      if (_apiKey.isEmpty) {
-        yield '⚠️ API key not configured.';
-        return;
-      }
-
-      final request = http.Request('POST', Uri.parse(_baseUrl));
-      request.headers.addAll({
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $_apiKey',
-      });
-      
-      request.body = jsonEncode({
-        'model': 'llama-3.1-70b-versatile',
-        'messages': [
-          {'role': 'system', 'content': _systemPrompt},
-          {'role': 'user', 'content': userMessage}
-        ],
-        'temperature': 0.7,
-        'max_tokens': 1024,
-        'stream': true,
-      });
-
-      final streamedResponse = await request.send();
-      
-      if (streamedResponse.statusCode == 200) {
-        await for (var chunk in streamedResponse.stream.transform(utf8.decoder)) {
-          final lines = chunk.split('\n');
-          for (var line in lines) {
-            if (line.startsWith('data: ') && line != 'data: [DONE]') {
-              try {
-                final jsonStr = line.substring(6);
-                final data = jsonDecode(jsonStr);
-                final content = data['choices'][0]['delta']['content'];
-                if (content != null) {
-                  yield content;
-                }
-              } catch (e) {
-                // Skip invalid JSON
-              }
-            }
-          }
-        }
-      } else {
-        yield '❌ Error: ${streamedResponse.statusCode}';
-      }
-    } catch (e) {
-      yield '❌ Error: ${e.toString()}';
+      return '❌ Unexpected Error:\n${e.toString()}\n\nPlease try again.';
     }
   }
 }
