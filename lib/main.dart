@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';  // ADD THIS LINE
 import 'config/supabase_config.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -9,17 +10,17 @@ import 'providers/signals_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 
-
-
- void main() async {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables FIRST
+  await dotenv.load(fileName: ".env");
 
   // Initialize Supabase
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
-  await dotenv.load(fileName: ".env");
 
   runApp(const MyApp());
 }
@@ -60,7 +61,6 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // dart
     final authProvider = context.read<AuthProvider>();
 
     // Check if user is logged in
@@ -71,8 +71,3 @@ class AuthWrapper extends StatelessWidget {
     }
   }
 }
-
-
-
-
-
