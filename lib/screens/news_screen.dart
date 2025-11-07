@@ -1,13 +1,12 @@
 // ============================================
-// FILE: lib/screens/news_screen.dart
+// FILE 2: lib/screens/news_screen.dart
 // ============================================
-// Using RSS feeds - COMPLETELY FREE, NO LIMITS, NO API KEY NEEDED!
 
 import 'package:flutter/material.dart';
 import 'dart:async';
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:webfeed/webfeed.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -25,38 +24,25 @@ class _NewsScreenState extends State<NewsScreen> {
   DateTime _lastRefresh = DateTime.now();
 
   List<NewsItem> _allNews = [];
+  String _errorMessage = '';
 
-  // RSS Feed Sources - Multiple Indian financial news sources
-  final List<NewsSource> _newsSources = [
-    NewsSource(
-      name: 'Economic Times - Markets',
-      url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
-      category: 'market',
-    ),
-    NewsSource(
-      name: 'Economic Times - Stocks',
-      url: 'https://economictimes.indiatimes.com/markets/stocks/rssfeeds/2146842.cms',
-      category: 'stocks',
-    ),
-    NewsSource(
-      name: 'Moneycontrol - Markets',
-      url: 'https://www.moneycontrol.com/rss/marketreports.xml',
-      category: 'market',
-    ),
-    NewsSource(
-      name: 'Moneycontrol - News',
+  // Multiple RSS feed sources for Indian stock market
+  final List<RSSSource> _rssSources = [
+    RSSSource(
+      name: 'Moneycontrol',
       url: 'https://www.moneycontrol.com/rss/latestnews.xml',
-      category: 'news',
     ),
-    NewsSource(
-      name: 'Business Standard - Markets',
+    RSSSource(
+      name: 'Economic Times',
+      url: 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
+    ),
+    RSSSource(
+      name: 'Business Standard',
       url: 'https://www.business-standard.com/rss/markets-106.rss',
-      category: 'market',
     ),
-    NewsSource(
-      name: 'Business Standard - Finance',
-      url: 'https://www.business-standard.com/rss/finance-103.rss',
-      category: 'finance',
+    RSSSource(
+      name: 'Mint',
+      url: 'https://www.livemint.com/rss/markets',
     ),
   ];
 
@@ -84,44 +70,65 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Future<void> _loadNews() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
 
     try {
       List<NewsItem> allArticles = [];
+      int successCount = 0;
 
-      // Fetch from all RSS sources in parallel
-      final futures = _newsSources.map((source) => _fetchRSSFeed(source));
-      final results = await Future.wait(futures);
-
-      for (var articles in results) {
-        allArticles.addAll(articles);
+      // Try to fetch from each source
+      for (var source in _rssSources) {
+        try {
+          debugPrint('📡 Fetching from ${source.name}...');
+          final articles = await _fetchFromRSS(source);
+          if (articles.isNotEmpty) {
+            allArticles.addAll(articles);
+            successCount++;
+            debugPrint('✅ Got ${articles.length} articles from ${source.name}');
+          }
+        } catch (e) {
+          debugPrint('⚠️ Failed to fetch from ${source.name}: $e');
+        }
       }
 
-      // Sort by timestamp (newest first)
+      if (allArticles.isEmpty) {
+        throw Exception('Could not fetch news from any source. Please check your internet connection.');
+      }
+
+      // Sort by date (newest first)
       allArticles.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      // Filter today's news only
-      final today = DateTime.now();
-      final todayArticles = allArticles.where((article) {
-        final diff = today.difference(article.timestamp);
-        return diff.inHours < 24; // Only last 24 hours
+      // Filter to show only recent news (last 48 hours to ensure we have content)
+      final cutoffDate = DateTime.now().subtract(const Duration(hours: 48));
+      final recentArticles = allArticles.where((article) {
+        return article.timestamp.isAfter(cutoffDate);
       }).toList();
 
+      // If no recent articles, show all articles
+      final articlesToShow = recentArticles.isNotEmpty ? recentArticles : allArticles;
+
       setState(() {
-        _allNews = todayArticles;
+        _allNews = articlesToShow;
         _lastRefresh = DateTime.now();
         _isLoading = false;
+        _errorMessage = '';
       });
 
-      debugPrint('✅ Loaded ${todayArticles.length} news articles (last 24h)');
+      debugPrint('✅ Loaded ${articlesToShow.length} articles from $successCount sources');
     } catch (e) {
       debugPrint('❌ Error loading news: $e');
-      setState(() => _isLoading = false);
-      
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to load news: ${e.toString()}'),
+            content: Text('Failed to load news: $e'),
             backgroundColor: Colors.red,
             action: SnackBarAction(
               label: 'Retry',
@@ -134,99 +141,105 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
-  Future<List<NewsItem>> _fetchRSSFeed(NewsSource source) async {
+  Future<List<NewsItem>> _fetchFromRSS(RSSSource source) async {
     try {
-      // Use RSS to JSON converter API (free, no limits)
-      final rssUrl = Uri.encodeComponent(source.url);
-      final apiUrl = 'https://api.rss2json.com/v1/api.json?rss_url=$rssUrl&count=50';
-      
       final response = await http.get(
-        Uri.parse(apiUrl),
-      ).timeout(const Duration(seconds: 10));
+        Uri.parse(source.url),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        
-        if (data['status'] == 'ok') {
-          final items = data['items'] as List;
-          
-          return items.map((item) {
-            return _parseRSSItem(item, source.name);
-          }).toList();
-        }
+        final feed = RssFeed.parse(response.body);
+        final items = feed.items ?? [];
+
+        return items.map((item) {
+          final title = item.title ?? 'No Title';
+          final description = item.description ?? '';
+          final link = item.link ?? '';
+          final pubDate = item.pubDate ?? DateTime.now();
+
+          // Clean HTML from description
+          final cleanDesc = _stripHtml(description);
+
+          // Extract stock symbol
+          final symbol = _extractStockSymbol(title + ' ' + cleanDesc);
+
+          // Analyze sentiment
+          final sentiment = _analyzeSentiment(title + ' ' + cleanDesc);
+
+          return NewsItem(
+            symbol: symbol,
+            title: _cleanText(title),
+            summary: _cleanText(cleanDesc),
+            sentiment: sentiment,
+            timestamp: pubDate,
+            source: source.name,
+            url: link,
+          );
+        }).toList();
       }
-      
+
       return [];
     } catch (e) {
-      debugPrint('Error fetching ${source.name}: $e');
+      debugPrint('Error fetching from ${source.name}: $e');
       return [];
     }
   }
 
-  NewsItem _parseRSSItem(Map<String, dynamic> item, String sourceName) {
-    final title = item['title'] ?? 'No Title';
-    final description = item['description'] ?? item['content'] ?? 'No description available';
-    final link = item['link'] ?? '';
-    final pubDate = item['pubDate'] ?? DateTime.now().toIso8601String();
-    
-    DateTime timestamp;
-    try {
-      timestamp = DateTime.parse(pubDate);
-    } catch (e) {
-      timestamp = DateTime.now();
-    }
-
-    // Clean HTML tags from description
-    final cleanDescription = _stripHtmlTags(description);
-
-    // Extract stock symbol
-    final symbol = _extractStockSymbol(title + ' ' + cleanDescription);
-    
-    // Analyze sentiment
-    final sentiment = _analyzeSentiment(title + ' ' + cleanDescription);
-
-    return NewsItem(
-      symbol: symbol,
-      title: _cleanTitle(title),
-      summary: _cleanSummary(cleanDescription),
-      sentiment: sentiment,
-      timestamp: timestamp,
-      source: sourceName,
-      url: link,
-    );
-  }
-
-  String _stripHtmlTags(String html) {
+  String _stripHtml(String text) {
     // Remove HTML tags
-    final exp = RegExp(r'<[^>]*>', multiLine: true, caseSensitive: false);
-    return html.replaceAll(exp, '').replaceAll('&nbsp;', ' ').trim();
+    final exp = RegExp(r'<[^>]*>', multiLine: true);
+    return text
+        .replaceAll(exp, '')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&#39;', "'")
+        .trim();
+  }
+
+  String _cleanText(String text) {
+    if (text.isEmpty) return 'No description available';
+    String cleaned = _stripHtml(text);
+    
+    // Remove multiple spaces
+    cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
+    
+    // Limit length
+    if (cleaned.length > 200) {
+      cleaned = '${cleaned.substring(0, 200)}...';
+    }
+    
+    return cleaned.trim();
   }
 
   String _extractStockSymbol(String text) {
     final upperText = text.toUpperCase();
-    
-    // Comprehensive map of Indian company names to stock symbols
+
     final stockMap = {
       'RELIANCE': 'RELIANCE',
       'RIL': 'RELIANCE',
       'TCS': 'TCS',
       'TATA CONSULTANCY': 'TCS',
       'INFOSYS': 'INFY',
-      'INFY': 'INFY',
-      'HDFC': 'HDFCBANK',
       'HDFC BANK': 'HDFCBANK',
-      'ICICI': 'ICICIBANK',
+      'HDFC': 'HDFCBANK',
       'ICICI BANK': 'ICICIBANK',
+      'ICICI': 'ICICIBANK',
       'WIPRO': 'WIPRO',
       'TATA STEEL': 'TATASTEEL',
-      'TATASTEEL': 'TATASTEEL',
-      'BHARTI': 'BHARTIARTL',
+      'BHARTI AIRTEL': 'BHARTIARTL',
       'AIRTEL': 'BHARTIARTL',
       'SBI': 'SBIN',
       'STATE BANK': 'SBIN',
       'ADANI': 'ADANIENT',
       'ITC': 'ITC',
       'KOTAK': 'KOTAKBANK',
+      'AXIS BANK': 'AXISBANK',
       'AXIS': 'AXISBANK',
       'HCL TECH': 'HCLTECH',
       'MARUTI': 'MARUTI',
@@ -244,6 +257,10 @@ class _NewsScreenState extends State<NewsScreen> {
       'NTPC': 'NTPC',
       'ONGC': 'ONGC',
       'COAL INDIA': 'COALINDIA',
+      'NIFTY': 'NIFTY',
+      'SENSEX': 'SENSEX',
+      'BSE': 'BSE',
+      'NSE': 'NSE',
     };
 
     for (var entry in stockMap.entries) {
@@ -257,21 +274,17 @@ class _NewsScreenState extends State<NewsScreen> {
 
   String _analyzeSentiment(String text) {
     final lowerText = text.toLowerCase();
-    
-    // Positive keywords
+
     final positiveWords = [
       'surge', 'gain', 'profit', 'growth', 'strong', 'beat', 'exceed',
-      'bullish', 'high', 'success', 'win', 'boost', 'rise', 'jump',
-      'positive', 'upgrade', 'outperform', 'rally', 'soar', 'hits high',
-      'record', 'all-time high', '买买', 'buy', 'up', 'top gainer'
+      'bullish', 'high', 'rally', 'soar', 'jump', 'positive', 'upgrade',
+      'outperform', 'record', 'hits high', 'all-time high', 'buy', 'up',
     ];
-    
-    // Negative keywords
+
     final negativeWords = [
       'fall', 'loss', 'decline', 'weak', 'miss', 'disappoint', 'bearish',
-      'low', 'fail', 'drop', 'concern', 'downgrade', 'underperform',
-      'negative', 'struggle', 'cut', 'crash', 'plunge', 'slump',
-      'worst', 'sell', 'down', 'pressure', 'loss'
+      'low', 'crash', 'plunge', 'drop', 'concern', 'downgrade', 'underperform',
+      'negative', 'sell', 'down', 'pressure', 'slump', 'worst',
     ];
 
     int positiveCount = 0;
@@ -288,25 +301,6 @@ class _NewsScreenState extends State<NewsScreen> {
     if (positiveCount > negativeCount) return 'Bullish';
     if (negativeCount > positiveCount) return 'Bearish';
     return 'Neutral';
-  }
-
-  String _cleanTitle(String title) {
-    // Remove source names and clean up
-    String cleaned = title.split(' - ')[0];
-    cleaned = _stripHtmlTags(cleaned);
-    return cleaned.length > 100 
-        ? '${cleaned.substring(0, 100)}...' 
-        : cleaned;
-  }
-
-  String _cleanSummary(String summary) {
-    if (summary.isEmpty || summary == 'No description available') {
-      return 'Tap to read full article';
-    }
-    String cleaned = _stripHtmlTags(summary);
-    return cleaned.length > 200 
-        ? '${cleaned.substring(0, 200)}...' 
-        : cleaned;
   }
 
   List<NewsItem> get _filteredNews {
@@ -348,8 +342,10 @@ class _NewsScreenState extends State<NewsScreen> {
       return '${difference.inMinutes}m ago';
     } else if (difference.inHours < 24) {
       return '${difference.inHours}h ago';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
     } else {
-      return 'Today';
+      return '${difference.inDays}d ago';
     }
   }
 
@@ -358,8 +354,6 @@ class _NewsScreenState extends State<NewsScreen> {
       final uri = Uri.parse(url);
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        throw 'Could not launch $url';
       }
     } catch (e) {
       if (mounted) {
@@ -397,12 +391,10 @@ class _NewsScreenState extends State<NewsScreen> {
               });
               _startAutoRefresh();
             },
-            tooltip: _autoRefresh ? 'Auto-refresh ON' : 'Auto-refresh OFF',
           ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _isLoading ? null : _loadNews,
-            tooltip: 'Refresh Now',
           ),
         ],
       ),
@@ -435,7 +427,7 @@ class _NewsScreenState extends State<NewsScreen> {
                           ),
                         ),
                         Text(
-                          'Updated: ${_getTimeAgo(_lastRefresh)} • ${_allNews.length} articles today',
+                          'Updated: ${_getTimeAgo(_lastRefresh)} • ${_allNews.length} articles',
                           style: const TextStyle(
                             fontSize: 11,
                             color: Color(0xFF6B7280),
@@ -474,7 +466,7 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
             ),
 
-            // Sources info banner
+            // Sources Banner
             Container(
               margin: const EdgeInsets.all(16),
               padding: const EdgeInsets.all(12),
@@ -568,7 +560,7 @@ class _NewsScreenState extends State<NewsScreen> {
                           const CircularProgressIndicator(),
                           const SizedBox(height: 16),
                           Text(
-                            'Loading latest news...',
+                            'Fetching latest market news...',
                             style: TextStyle(
                               color: Colors.grey[600],
                               fontSize: 14,
@@ -590,19 +582,37 @@ class _NewsScreenState extends State<NewsScreen> {
                               const SizedBox(height: 16),
                               Text(
                                 _searchQuery.isEmpty
-                                    ? 'No news available today'
-                                    : 'No news found for "$_searchQuery"',
+                                    ? 'No news available'
+                                    : 'No results for "$_searchQuery"',
                                 style: TextStyle(
                                   fontSize: 18,
                                   color: Colors.grey[600],
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              const SizedBox(height: 8),
-                              TextButton.icon(
+                              if (_errorMessage.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                                  child: Text(
+                                    _errorMessage,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.red[600],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              ElevatedButton.icon(
                                 onPressed: _loadNews,
                                 icon: const Icon(Icons.refresh),
                                 label: const Text('Refresh News'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1E40AF),
+                                  foregroundColor: Colors.white,
+                                ),
                               ),
                             ],
                           ),
@@ -613,8 +623,7 @@ class _NewsScreenState extends State<NewsScreen> {
                               padding: const EdgeInsets.only(bottom: 20),
                               itemCount: _filteredNews.length,
                               itemBuilder: (context, index) {
-                                final news = _filteredNews[index];
-                                return _buildNewsCard(news);
+                                return _buildNewsCard(_filteredNews[index]);
                               },
                             ),
                             if (_isLoading)
@@ -655,7 +664,6 @@ class _NewsScreenState extends State<NewsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -711,8 +719,6 @@ class _NewsScreenState extends State<NewsScreen> {
               ],
             ),
           ),
-
-          // Content
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -755,12 +761,11 @@ class _NewsScreenState extends State<NewsScreen> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
                     TextButton.icon(
                       onPressed: () => _openUrl(news.url),
                       icon: const Icon(Icons.open_in_new, size: 14),
                       label: const Text(
-                        'Read Full',
+                        'Read',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -798,14 +803,12 @@ class NewsItem {
   });
 }
 
-class NewsSource {
+class RSSSource {
   final String name;
   final String url;
-  final String category;
 
-  NewsSource({
+  RSSSource({
     required this.name,
     required this.url,
-    required this.category,
   });
 }
