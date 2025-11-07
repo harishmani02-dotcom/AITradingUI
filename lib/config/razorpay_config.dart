@@ -4,7 +4,7 @@ class RazorpayConfig {
   static const String keySecret = '3kcApoYuV3qTUjNZRa1E4bpa'; // Replace!
   
   // Subscription amount (in paise - ₹499 = 49900 paise)
-  static const int subscriptionAmount = 49900;
+  static const int subscriptionAmount = 100;
   
   // Business details
   static const String companyName = 'AI Trading Signals';
