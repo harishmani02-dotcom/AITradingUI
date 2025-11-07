@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/stock_api_service.dart';
 
 class MoversScreen extends StatefulWidget {
   const MoversScreen({super.key});
@@ -11,12 +12,35 @@ class _MoversScreenState extends State<MoversScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = false;
+  
+  // API Service
+  final StockApiService _apiService = StockApiService();
+  
+  // Cache for stock data
+  List<StockMover> _topGainers = [];
+  List<StockMover> _topLosers = [];
+  List<StockMover> _volumeBuzzers = [];
+  
+  String? _errorMessage;
+  DateTime? _lastUpdated;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadData();
+    
+    // Auto-refresh every 5 minutes
+    _startAutoRefresh();
+  }
+  
+  void _startAutoRefresh() {
+    Future.delayed(const Duration(minutes: 5), () {
+      if (mounted) {
+        _loadData();
+        _startAutoRefresh();
+      }
+    });
   }
 
   @override
@@ -26,159 +50,41 @@ class _MoversScreenState extends State<MoversScreen>
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
-    setState(() => _isLoading = false);
-  }
-
-  List<StockMover> _getTopGainers() {
-    return [
-      StockMover(
-        symbol: 'TCS',
-        name: 'Tata Consultancy',
-        price: 3456.75,
-        change: 112.50,
-        changePercent: 3.36,
-        volume: '2.5M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'RELIANCE',
-        name: 'Reliance Industries',
-        price: 2456.80,
-        change: 68.30,
-        changePercent: 2.86,
-        volume: '4.2M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'INFY',
-        name: 'Infosys Ltd',
-        price: 1432.60,
-        change: 29.40,
-        changePercent: 2.09,
-        volume: '3.1M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'HDFCBANK',
-        name: 'HDFC Bank',
-        price: 1645.25,
-        change: 31.75,
-        changePercent: 1.97,
-        volume: '5.8M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'ICICIBANK',
-        name: 'ICICI Bank',
-        price: 987.50,
-        change: 17.80,
-        changePercent: 1.84,
-        volume: '6.3M',
-        signal: 'Buy',
-      ),
-    ];
-  }
-
-  List<StockMover> _getTopLosers() {
-    return [
-      StockMover(
-        symbol: 'TATASTEEL',
-        name: 'Tata Steel',
-        price: 125.40,
-        change: -4.60,
-        changePercent: -3.54,
-        volume: '8.2M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'HINDALCO',
-        name: 'Hindalco Industries',
-        price: 412.30,
-        change: -13.70,
-        changePercent: -3.22,
-        volume: '4.5M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'JSWSTEEL',
-        name: 'JSW Steel',
-        price: 756.80,
-        change: -19.20,
-        changePercent: -2.47,
-        volume: '3.9M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'COALINDIA',
-        name: 'Coal India',
-        price: 234.50,
-        change: -5.50,
-        changePercent: -2.29,
-        volume: '5.1M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'VEDL',
-        name: 'Vedanta Ltd',
-        price: 298.75,
-        change: -6.25,
-        changePercent: -2.05,
-        volume: '7.4M',
-        signal: 'Sell',
-      ),
-    ];
-  }
-
-  List<StockMover> _getVolumeBuzzers() {
-    return [
-      StockMover(
-        symbol: 'YESBANK',
-        name: 'Yes Bank',
-        price: 18.45,
-        change: 0.35,
-        changePercent: 1.93,
-        volume: '125M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'BANKBARODA',
-        name: 'Bank of Baroda',
-        price: 187.60,
-        change: -2.40,
-        changePercent: -1.26,
-        volume: '45M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'IDEA',
-        name: 'Vodafone Idea',
-        price: 9.75,
-        change: 0.15,
-        changePercent: 1.56,
-        volume: '98M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'SUZLON',
-        name: 'Suzlon Energy',
-        price: 45.30,
-        change: 1.80,
-        changePercent: 4.14,
-        volume: '67M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'TATAMOTORS',
-        name: 'Tata Motors',
-        price: 678.90,
-        change: 12.40,
-        changePercent: 1.86,
-        volume: '38M',
-        signal: 'Buy',
-      ),
-    ];
+    if (_isLoading) return; // Prevent multiple simultaneous loads
+    
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    
+    try {
+      // Fetch real-time data
+      final gainers = await _apiService.fetchTopGainers();
+      final losers = await _apiService.fetchTopLosers();
+      final buzzers = await _apiService.fetchVolumeBuzzers();
+      
+      if (mounted) {
+        setState(() {
+          _topGainers = gainers;
+          _topLosers = losers;
+          _volumeBuzzers = buzzers;
+          _lastUpdated = DateTime.now();
+          _isLoading = false;
+          
+          if (gainers.isEmpty && losers.isEmpty && buzzers.isEmpty) {
+            _errorMessage = 'No data available. Pull to refresh.';
+          }
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Failed to load data. Pull to refresh.';
+          _isLoading = false;
+        });
+      }
+      print('Error loading data: $e');
+    }
   }
 
   Color _getSignalColor(String signal) {
@@ -215,6 +121,34 @@ class _MoversScreenState extends State<MoversScreen>
           ),
         ),
         backgroundColor: const Color(0xFF1E40AF),
+        actions: [
+          // Live indicator
+          if (!_isLoading && _topGainers.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.greenAccent,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  const Text(
+                    'Live',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: Colors.white,
@@ -266,20 +200,66 @@ class _MoversScreenState extends State<MoversScreen>
                       ),
                     ),
                   ),
+                  if (_lastUpdated != null)
+                    Text(
+                      _getTimeAgo(_lastUpdated!),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF1E40AF),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                 ],
               ),
             ),
 
+            // Error Message
+            if (_errorMessage != null)
+              Container(
+                padding: const EdgeInsets.all(12),
+                color: Colors.red.shade50,
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(
+                          color: Colors.red.shade700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
             // Tab Content
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text(
+                            'Loading real-time data...',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
                   : TabBarView(
                       controller: _tabController,
                       children: [
-                        _buildMoversList(_getTopGainers(), true),
-                        _buildMoversList(_getTopLosers(), false),
-                        _buildMoversList(_getVolumeBuzzers(), null),
+                        _buildMoversList(_topGainers, true),
+                        _buildMoversList(_topLosers, false),
+                        _buildMoversList(_volumeBuzzers, null),
                       ],
                     ),
             ),
@@ -302,7 +282,46 @@ class _MoversScreenState extends State<MoversScreen>
     }
   }
 
+  String _getTimeAgo(DateTime time) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    return '${diff.inHours}h ago';
+  }
+
   Widget _buildMoversList(List<StockMover> movers, bool? isGainer) {
+    if (movers.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inbox_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No data available',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Pull down to refresh',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: movers.length,
@@ -491,24 +510,4 @@ class _MoversScreenState extends State<MoversScreen>
       ),
     );
   }
-}
-
-class StockMover {
-  final String symbol;
-  final String name;
-  final double price;
-  final double change;
-  final double changePercent;
-  final String volume;
-  final String signal;
-
-  StockMover({
-    required this.symbol,
-    required this.name,
-    required this.price,
-    required this.change,
-    required this.changePercent,
-    required this.volume,
-    required this.signal,
-  });
 }
