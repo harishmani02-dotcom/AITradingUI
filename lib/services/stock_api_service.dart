@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 
 class StockMover {
@@ -23,115 +24,216 @@ class StockMover {
 }
 
 class StockApiService {
-  // Using RapidAPI's Yahoo Finance endpoint (more reliable)
-  static const String _baseUrl = 'https://query1.finance.yahoo.com/v7/finance/quote';
+  // Yahoo Finance API endpoints
+  static const String _quoteUrl = 'https://query1.finance.yahoo.com/v7/finance/quote';
   
-  // Indian stock symbols (NSE)
-  static final List<Map<String, String>> nseStocks = [
-    {'symbol': 'TCS.NS', 'name': 'Tata Consultancy Services'},
-    {'symbol': 'RELIANCE.NS', 'name': 'Reliance Industries'},
-    {'symbol': 'INFY.NS', 'name': 'Infosys Ltd'},
-    {'symbol': 'HDFCBANK.NS', 'name': 'HDFC Bank'},
-    {'symbol': 'ICICIBANK.NS', 'name': 'ICICI Bank'},
-    {'symbol': 'TATASTEEL.NS', 'name': 'Tata Steel'},
-    {'symbol': 'HINDALCO.NS', 'name': 'Hindalco Industries'},
-    {'symbol': 'JSWSTEEL.NS', 'name': 'JSW Steel'},
-    {'symbol': 'COALINDIA.NS', 'name': 'Coal India'},
-    {'symbol': 'VEDL.NS', 'name': 'Vedanta Ltd'},
-    {'symbol': 'YESBANK.NS', 'name': 'Yes Bank'},
-    {'symbol': 'BANKBARODA.NS', 'name': 'Bank of Baroda'},
-    {'symbol': 'IDEA.NS', 'name': 'Vodafone Idea'},
-    {'symbol': 'SUZLON.NS', 'name': 'Suzlon Energy'},
-    {'symbol': 'TATAMOTORS.NS', 'name': 'Tata Motors'},
+  // Top 200 NSE stocks (NIFTY 200 constituents)
+  static final List<String> top200Symbols = [
+    // NIFTY 50
+    'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS',
+    'HINDUNILVR.NS', 'ITC.NS', 'SBIN.NS', 'BHARTIARTL.NS', 'KOTAKBANK.NS',
+    'LT.NS', 'AXISBANK.NS', 'ASIANPAINT.NS', 'MARUTI.NS', 'SUNPHARMA.NS',
+    'TITAN.NS', 'ULTRACEMCO.NS', 'BAJFINANCE.NS', 'NESTLEIND.NS', 'WIPRO.NS',
+    'HCLTECH.NS', 'TECHM.NS', 'POWERGRID.NS', 'NTPC.NS', 'ONGC.NS',
+    'M&M.NS', 'TATAMOTORS.NS', 'TATASTEEL.NS', 'JSWSTEEL.NS', 'HINDALCO.NS',
+    'COALINDIA.NS', 'GRASIM.NS', 'ADANIPORTS.NS', 'BAJAJFINSV.NS', 'INDUSINDBK.NS',
+    'DRREDDY.NS', 'DIVISLAB.NS', 'CIPLA.NS', 'EICHERMOT.NS', 'SHREECEM.NS',
+    'UPL.NS', 'APOLLOHOSP.NS', 'BRITANNIA.NS', 'HEROMOTOCO.NS', 'BAJAJ-AUTO.NS',
+    'SBILIFE.NS', 'BPCL.NS', 'IOC.NS', 'ADANIENT.NS', 'TATACONSUM.NS',
+    
+    // NIFTY NEXT 50
+    'ADANIGREEN.NS', 'ACC.NS', 'AMBUJACEM.NS', 'BANDHANBNK.NS', 'BERGEPAINT.NS',
+    'BEL.NS', 'CANBK.NS', 'CHOLAFIN.NS', 'COLPAL.NS', 'DLF.NS',
+    'DABUR.NS', 'DMART.NS', 'GAIL.NS', 'GODREJCP.NS', 'GLAND.NS',
+    'HAVELLS.NS', 'HDFCAMC.NS', 'HDFCLIFE.NS', 'HINDPETRO.NS', 'ICICIPRULI.NS',
+    'IDEA.NS', 'IPCALAB.NS', 'IRCTC.NS', 'IGL.NS', 'JINDALSTEL.NS',
+    'LTI.NS', 'LICHSGFIN.NS', 'MCDOWELL-N.NS', 'MARICO.NS', 'MUTHOOTFIN.NS',
+    'NMDC.NS', 'NAUKRI.NS', 'OFSS.NS', 'PAGEIND.NS', 'PETRONET.NS',
+    'PIIND.NS', 'PFC.NS', 'PGHH.NS', 'RAMCOCEM.NS', 'RECLTD.NS',
+    'SRF.NS', 'SBICARD.NS', 'SIEMENS.NS', 'TATAPOWER.NS', 'TORNTPHARM.NS',
+    'TRENT.NS', 'MPHASIS.NS', 'VEDL.NS', 'VOLTAS.NS', 'ZEEL.NS',
+    
+    // Additional High Volume Stocks (Next 100)
+    'YESBANK.NS', 'BANKBARODA.NS', 'BANKINDIA.NS', 'PNB.NS', 'UNIONBANK.NS',
+    'SUZLON.NS', 'SAIL.NS', 'RPOWER.NS', 'AUROPHARMA.NS', 'BIOCON.NS',
+    'CADILAHC.NS', 'LUPIN.NS', 'ALKEM.NS', 'GODREJPROP.NS', 'OBEROIRLTY.NS',
+    'PRESTIGE.NS', 'PHOENIXLTD.NS', 'BRIGADE.NS', 'ASHOKLEY.NS', 'ESCORTS.NS',
+    'MOTHERSON.NS', 'EXIDEIND.NS', 'APOLLOTYRE.NS', 'MRF.NS', 'CEAT.NS',
+    'BALKRISIND.NS', 'AMARAJABAT.NS', 'BOSCHLTD.NS', 'BHEL.NS', 'ABB.NS',
+    'CROMPTON.NS', 'FEDERALBNK.NS', 'IDFCFIRSTB.NS', 'RBLBANK.NS', 'EQUITAS.NS',
+    'AUBANK.NS', 'JUBLFOOD.NS', 'TATACOMM.NS', 'MFSL.NS', 'LTTS.NS',
+    'COFORGE.NS', 'PERSISTENT.NS', 'MINDTREE.NS', 'L&TFH.NS', 'PEL.NS',
+    'WHIRLPOOL.NS', 'BATAINDIA.NS', 'TATAELXSI.NS', 'ABCAPITAL.NS', 'AARTIIND.NS',
+    'ATUL.NS', 'BALRAMCHIN.NS', 'DEEPAKNTR.NS', 'GNFC.NS', 'GUJGASLTD.NS',
+    'INDHOTEL.NS', 'INDUSTOWER.NS', 'IRFC.NS', 'JKCEMENT.NS', 'JSWENERGY.NS',
+    'KAJARIACER.NS', 'KEI.NS', 'CONCOR.NS', 'ABFRL.NS', 'APLAPOLLO.NS',
+    'ASTRAL.NS', 'CUMMINSIND.NS', 'DIXON.NS', 'EMAMILTD.NS', 'ENDURANCE.NS',
+    'FORTIS.NS', 'GLENMARK.NS', 'GMRINFRA.NS', 'GODREJIND.NS', 'GRAPHITE.NS',
+    'HATSUN.NS', 'IBREALEST.NS', 'ICICIGI.NS', 'IDFC.NS', 'INOXLEISUR.NS',
+    'IOB.NS', 'IRCON.NS', 'JBCHEPHARM.NS', 'JKLAKSHMI.NS', 'KANSAINER.NS',
+    'KPITTECH.NS', 'LALPATHLAB.NS', 'LINDEINDIA.NS', 'MANAPPURAM.NS', 'MAXHEALTH.NS',
+    'METROBRAND.NS', 'NATCOPHARM.NS', 'NATIONALUM.NS', 'NBCC.NS', 'NESCO.NS',
+    'NETWORK18.NS', 'NFL.NS', 'ORIENTELEC.NS', 'PAGEIND.NS', 'POLICYBZR.NS',
   ];
   
-  /// Fetch Top Gainers
+  /// Main method: Fetch Top Gainers
   Future<List<StockMover>> fetchTopGainers() async {
     List<StockMover> allStocks = await _fetchAllStocksBatch();
     
     if (allStocks.isEmpty) {
-      print('⚠️ No stocks fetched. Using fallback data.');
-      return _getFallbackGainers();
+      print('⚠️ No data fetched from Yahoo Finance');
+      return [];
     }
     
+    print('✅ Analyzing ${allStocks.length} stocks for top gainers...');
+    
+    // Filter only positive movers and sort
     allStocks.sort((a, b) => b.changePercent.compareTo(a.changePercent));
-    return allStocks.take(5).toList();
+    
+    return allStocks
+        .where((stock) => stock.changePercent > 0)
+        .take(15)
+        .toList();
   }
   
-  /// Fetch Top Losers
+  /// Main method: Fetch Top Losers
   Future<List<StockMover>> fetchTopLosers() async {
     List<StockMover> allStocks = await _fetchAllStocksBatch();
     
     if (allStocks.isEmpty) {
-      print('⚠️ No stocks fetched. Using fallback data.');
-      return _getFallbackLosers();
+      print('⚠️ No data fetched from Yahoo Finance');
+      return [];
     }
     
+    print('✅ Analyzing ${allStocks.length} stocks for top losers...');
+    
+    // Filter only negative movers and sort
     allStocks.sort((a, b) => a.changePercent.compareTo(b.changePercent));
-    return allStocks.take(5).toList();
+    
+    return allStocks
+        .where((stock) => stock.changePercent < 0)
+        .take(15)
+        .toList();
   }
   
-  /// Fetch Volume Buzzers
+  /// Main method: Fetch Volume Buzzers
   Future<List<StockMover>> fetchVolumeBuzzers() async {
     List<StockMover> allStocks = await _fetchAllStocksBatch();
     
     if (allStocks.isEmpty) {
-      print('⚠️ No stocks fetched. Using fallback data.');
-      return _getFallbackVolumeBuzzers();
+      print('⚠️ No data fetched from Yahoo Finance');
+      return [];
     }
     
-    allStocks.sort((a, b) => _parseVolume(b.volume).compareTo(_parseVolume(a.volume)));
-    return allStocks.take(5).toList();
+    print('✅ Analyzing ${allStocks.length} stocks for volume buzzers...');
+    
+    // Sort by volume
+    allStocks.sort((a, b) => 
+      _parseVolume(b.volume).compareTo(_parseVolume(a.volume))
+    );
+    
+    return allStocks.take(15).toList();
   }
   
-  /// Fetch all stocks in a single batch request (faster & more reliable)
+  /// Core API call - Fetches all 200 stocks in batches
   Future<List<StockMover>> _fetchAllStocksBatch() async {
     try {
-      // Get all symbols as comma-separated string
-      String symbols = nseStocks.map((s) => s['symbol']).join(',');
+      // Yahoo Finance allows up to 100 symbols per request
+      // So we'll split into multiple batches
+      List<StockMover> allStocks = [];
       
-      final url = Uri.parse('$_baseUrl?symbols=$symbols');
+      int batchSize = 100;
+      int totalBatches = (top200Symbols.length / batchSize).ceil();
       
-      print('🔄 Fetching stock data...');
+      print('🔄 Fetching ${top200Symbols.length} stocks in $totalBatches batches...');
+      
+      for (int i = 0; i < totalBatches; i++) {
+        int start = i * batchSize;
+        int end = (start + batchSize > top200Symbols.length) 
+            ? top200Symbols.length 
+            : start + batchSize;
+        
+        List<String> batchSymbols = top200Symbols.sublist(start, end);
+        
+        print('📦 Fetching batch ${i + 1}/$totalBatches (${batchSymbols.length} stocks)...');
+        
+        List<StockMover> batchStocks = await _fetchBatch(batchSymbols);
+        allStocks.addAll(batchStocks);
+        
+        // Small delay between batches to be respectful to API
+        if (i < totalBatches - 1) {
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+      
+      print('✅ Successfully fetched ${allStocks.length} stocks!');
+      return allStocks;
+      
+    } catch (e) {
+      print('❌ Error fetching stocks: $e');
+      return [];
+    }
+  }
+  
+  /// Fetch a single batch of stocks
+  Future<List<StockMover>> _fetchBatch(List<String> symbols) async {
+    try {
+      String symbolsParam = symbols.join(',');
+      
+      final url = Uri.parse('$_quoteUrl?symbols=$symbolsParam');
       
       final response = await http.get(
         url,
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+          'Accept': 'application/json',
+          'Accept-Language': 'en-US,en;q=0.9',
         },
       ).timeout(
-        const Duration(seconds: 15),
-        onTimeout: () {
-          throw HttpException('Request timeout');
-        },
+        const Duration(seconds: 30),
+        onTimeout: () => throw TimeoutException('Request timeout'),
       );
-      
-      print('📡 Response status: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        final results = data['quoteResponse']['result'] as List;
         
-        print('✅ Received ${results.length} stocks');
+        // Check if response has valid structure
+        if (data['quoteResponse'] == null || data['quoteResponse']['result'] == null) {
+          print('⚠️ Invalid API response structure');
+          return [];
+        }
+        
+        final results = data['quoteResponse']['result'] as List;
         
         List<StockMover> stocks = [];
         
         for (var quote in results) {
           try {
-            double currentPrice = (quote['regularMarketPrice'] ?? 0).toDouble();
-            double previousClose = (quote['regularMarketPreviousClose'] ?? 0).toDouble();
+            // Extract data with null safety
+            double? currentPrice = _toDouble(quote['regularMarketPrice']);
+            double? previousClose = _toDouble(quote['regularMarketPreviousClose']);
             
-            if (currentPrice == 0 || previousClose == 0) continue;
+            // Skip if essential data is missing
+            if (currentPrice == null || previousClose == null || 
+                currentPrice == 0 || previousClose == 0) {
+              continue;
+            }
             
             double change = currentPrice - previousClose;
             double changePercent = (change / previousClose) * 100;
             
-            int volume = (quote['regularMarketVolume'] ?? 0);
-            String symbol = quote['symbol'] ?? '';
-            String name = quote['shortName'] ?? quote['longName'] ?? symbol;
+            int volume = _toInt(quote['regularMarketVolume']) ?? 0;
+            String symbol = quote['symbol']?.toString() ?? '';
+            String name = quote['shortName']?.toString() ?? 
+                         quote['longName']?.toString() ?? 
+                         symbol;
             
+            // Clean up symbol (remove .NS)
+            symbol = symbol.replaceAll('.NS', '');
+            
+            // Create stock object
             stocks.add(StockMover(
-              symbol: symbol.replaceAll('.NS', ''),
+              symbol: symbol,
               name: name,
               price: currentPrice,
               change: change,
@@ -139,208 +241,84 @@ class StockApiService {
               volume: _formatVolume(volume),
               signal: _generateSignal(changePercent),
             ));
+            
           } catch (e) {
-            print('⚠️ Error parsing stock: $e');
+            // Skip problematic stocks silently
             continue;
           }
         }
         
         return stocks;
+        
+      } else if (response.statusCode == 429) {
+        print('⚠️ Rate limited - waiting before retry...');
+        await Future.delayed(const Duration(seconds: 2));
+        return [];
       } else {
-        print('❌ API Error: ${response.statusCode}');
-        print('Response: ${response.body}');
+        print('❌ API returned status ${response.statusCode}');
         return [];
       }
+      
     } on SocketException {
       print('❌ No internet connection');
       return [];
-    } on HttpException catch (e) {
-      print('❌ HTTP Error: $e');
+    } on TimeoutException {
+      print('❌ Request timed out');
       return [];
     } catch (e) {
-      print('❌ Unexpected error: $e');
+      print('❌ Error in batch fetch: $e');
       return [];
     }
   }
   
-  /// Generate Buy/Hold/Sell signal
+  /// Helper: Safely convert to double
+  double? _toDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+  
+  /// Helper: Safely convert to int
+  int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+  
+  /// Generate trading signal based on price change
   String _generateSignal(double changePercent) {
     if (changePercent > 2.0) return 'Buy';
     if (changePercent < -2.0) return 'Sell';
     return 'Hold';
   }
   
-  /// Format volume to readable string
+  /// Format volume to human-readable string
   String _formatVolume(int volume) {
-    if (volume >= 1000000) {
-      return '${(volume / 1000000).toStringAsFixed(1)}M';
+    if (volume >= 10000000) {
+      return '${(volume / 10000000).toStringAsFixed(1)}Cr';
+    } else if (volume >= 100000) {
+      return '${(volume / 100000).toStringAsFixed(1)}L';
     } else if (volume >= 1000) {
       return '${(volume / 1000).toStringAsFixed(1)}K';
     }
     return volume.toString();
   }
   
-  /// Parse volume string back to number
+  /// Parse volume string back to number for sorting
   double _parseVolume(String volume) {
     if (volume.isEmpty) return 0;
     
     String numPart = volume.replaceAll(RegExp(r'[^0-9.]'), '');
     double num = double.tryParse(numPart) ?? 0;
     
+    if (volume.contains('Cr')) return num * 10000000;
+    if (volume.contains('L')) return num * 100000;
     if (volume.contains('M')) return num * 1000000;
     if (volume.contains('K')) return num * 1000;
     return num;
-  }
-  
-  // ========== FALLBACK DATA (When API fails) ==========
-  
-  List<StockMover> _getFallbackGainers() {
-    return [
-      StockMover(
-        symbol: 'TCS',
-        name: 'Tata Consultancy',
-        price: 3456.75,
-        change: 112.50,
-        changePercent: 3.36,
-        volume: '2.5M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'RELIANCE',
-        name: 'Reliance Industries',
-        price: 2456.80,
-        change: 68.30,
-        changePercent: 2.86,
-        volume: '4.2M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'INFY',
-        name: 'Infosys Ltd',
-        price: 1432.60,
-        change: 29.40,
-        changePercent: 2.09,
-        volume: '3.1M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'HDFCBANK',
-        name: 'HDFC Bank',
-        price: 1645.25,
-        change: 31.75,
-        changePercent: 1.97,
-        volume: '5.8M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'ICICIBANK',
-        name: 'ICICI Bank',
-        price: 987.50,
-        change: 17.80,
-        changePercent: 1.84,
-        volume: '6.3M',
-        signal: 'Buy',
-      ),
-    ];
-  }
-  
-  List<StockMover> _getFallbackLosers() {
-    return [
-      StockMover(
-        symbol: 'TATASTEEL',
-        name: 'Tata Steel',
-        price: 125.40,
-        change: -4.60,
-        changePercent: -3.54,
-        volume: '8.2M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'HINDALCO',
-        name: 'Hindalco Industries',
-        price: 412.30,
-        change: -13.70,
-        changePercent: -3.22,
-        volume: '4.5M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'JSWSTEEL',
-        name: 'JSW Steel',
-        price: 756.80,
-        change: -19.20,
-        changePercent: -2.47,
-        volume: '3.9M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'COALINDIA',
-        name: 'Coal India',
-        price: 234.50,
-        change: -5.50,
-        changePercent: -2.29,
-        volume: '5.1M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'VEDL',
-        name: 'Vedanta Ltd',
-        price: 298.75,
-        change: -6.25,
-        changePercent: -2.05,
-        volume: '7.4M',
-        signal: 'Sell',
-      ),
-    ];
-  }
-  
-  List<StockMover> _getFallbackVolumeBuzzers() {
-    return [
-      StockMover(
-        symbol: 'YESBANK',
-        name: 'Yes Bank',
-        price: 18.45,
-        change: 0.35,
-        changePercent: 1.93,
-        volume: '125M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'BANKBARODA',
-        name: 'Bank of Baroda',
-        price: 187.60,
-        change: -2.40,
-        changePercent: -1.26,
-        volume: '45M',
-        signal: 'Hold',
-      ),
-      StockMover(
-        symbol: 'IDEA',
-        name: 'Vodafone Idea',
-        price: 9.75,
-        change: 0.15,
-        changePercent: 1.56,
-        volume: '98M',
-        signal: 'Sell',
-      ),
-      StockMover(
-        symbol: 'SUZLON',
-        name: 'Suzlon Energy',
-        price: 45.30,
-        change: 1.80,
-        changePercent: 4.14,
-        volume: '67M',
-        signal: 'Buy',
-      ),
-      StockMover(
-        symbol: 'TATAMOTORS',
-        name: 'Tata Motors',
-        price: 678.90,
-        change: 12.40,
-        changePercent: 1.86,
-        volume: '38M',
-        signal: 'Buy',
-      ),
-    ];
   }
 }
