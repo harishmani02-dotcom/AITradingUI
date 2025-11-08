@@ -58,7 +58,7 @@ class _MoversScreenState extends State<MoversScreen>
     });
     
     try {
-      // Fetch real-time data
+      // Fetch real-time data from Yahoo Finance
       final gainers = await _apiService.fetchTopGainers();
       final losers = await _apiService.fetchTopLosers();
       final buzzers = await _apiService.fetchVolumeBuzzers();
@@ -72,7 +72,7 @@ class _MoversScreenState extends State<MoversScreen>
           _isLoading = false;
           
           if (gainers.isEmpty && losers.isEmpty && buzzers.isEmpty) {
-            _errorMessage = 'No data available. Pull to refresh.';
+            _errorMessage = 'No data available. Please check your internet connection.';
           }
         });
       }
@@ -245,7 +245,7 @@ class _MoversScreenState extends State<MoversScreen>
                           CircularProgressIndicator(),
                           SizedBox(height: 16),
                           Text(
-                            'Loading real-time data...',
+                            'Analyzing 200 stocks...',
                             style: TextStyle(
                               fontSize: 14,
                               color: Colors.grey,
@@ -460,8 +460,7 @@ class _MoversScreenState extends State<MoversScreen>
                       Text(
                         '${isPositive ? '+' : ''}${mover.changePercent.toStringAsFixed(2)}%',
                         style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 12,fontWeight: FontWeight.bold,
                           color: isPositive
                               ? const Color(0xFF10B981)
                               : const Color(0xFFEF4444),
