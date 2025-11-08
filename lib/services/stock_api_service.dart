@@ -24,11 +24,12 @@ class StockMover {
 }
 
 class StockApiService {
-  static const String _baseUrl = 'https://query1.finance.yahoo.com/v7/finance/quote';
+  // Using CORS proxy to bypass Yahoo Finance blocking
+  static const String _proxyUrl = 'https://api.allorigins.win/raw?url=';
+  static const String _yahooUrl = 'https://query1.finance.yahoo.com/v7/finance/quote';
   
-  // Top 100 most traded NSE stocks (reduced for faster loading)
+  // Top 100 most traded NSE stocks
   static final List<String> topStocks = [
-    // NIFTY 50
     'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS',
     'HINDUNILVR.NS', 'ITC.NS', 'SBIN.NS', 'BHARTIARTL.NS', 'KOTAKBANK.NS',
     'LT.NS', 'AXISBANK.NS', 'ASIANPAINT.NS', 'MARUTI.NS', 'SUNPHARMA.NS',
@@ -39,8 +40,6 @@ class StockApiService {
     'DRREDDY.NS', 'DIVISLAB.NS', 'CIPLA.NS', 'EICHERMOT.NS', 'SHREECEM.NS',
     'UPL.NS', 'APOLLOHOSP.NS', 'BRITANNIA.NS', 'HEROMOTOCO.NS', 'BAJAJ-AUTO.NS',
     'SBILIFE.NS', 'BPCL.NS', 'IOC.NS', 'ADANIENT.NS', 'TATACONSUM.NS',
-    
-    // High Volume Stocks
     'YESBANK.NS', 'BANKBARODA.NS', 'PNB.NS', 'UNIONBANK.NS', 'CANBK.NS',
     'SUZLON.NS', 'SAIL.NS', 'NMDC.NS', 'JINDALSTEL.NS', 'VEDL.NS',
     'GAIL.NS', 'PETRONET.NS', 'HINDPETRO.NS', 'FEDERALBNK.NS', 'RBLBANK.NS',
@@ -53,7 +52,6 @@ class StockApiService {
     'VOLTAS.NS', 'HAVELLS.NS', 'CROMPTON.NS', 'BATAINDIA.NS', 'PEL.NS',
   ];
   
-  /// Fetch Top Gainers
   Future<List<StockMover>> fetchTopGainers() async {
     List<StockMover> allStocks = await _fetchAllStocks();
     if (allStocks.isEmpty) return [];
@@ -62,7 +60,6 @@ class StockApiService {
     return allStocks.where((s) => s.changePercent > 0).take(15).toList();
   }
   
-  /// Fetch Top Losers
   Future<List<StockMover>> fetchTopLosers() async {
     List<StockMover> allStocks = await _fetchAllStocks();
     if (allStocks.isEmpty) return [];
@@ -71,7 +68,6 @@ class StockApiService {
     return allStocks.where((s) => s.changePercent < 0).take(15).toList();
   }
   
-  /// Fetch Volume Buzzers
   Future<List<StockMover>> fetchVolumeBuzzers() async {
     List<StockMover> allStocks = await _fetchAllStocks();
     if (allStocks.isEmpty) return [];
@@ -80,26 +76,24 @@ class StockApiService {
     return allStocks.take(15).toList();
   }
   
-  /// Fetch all stocks from Yahoo Finance
   Future<List<StockMover>> _fetchAllStocks() async {
     try {
-      String symbolsParam = topStocks.join(',');
-      final url = Uri.parse('$_baseUrl?symbols=$symbolsParam');
+      String symbolsParam = Uri.encodeComponent(topStocks.join(','));
+      String yahooApiUrl = Uri.encodeComponent('$_yahooUrl?symbols=${topStocks.join(',')}');
       
-      print('🔄 Fetching ${topStocks.length} stocks from Yahoo Finance...');
+      final url = Uri.parse('$_proxyUrl$yahooApiUrl');
       
-      final response = await http.get(
-        url,
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
-      ).timeout(const Duration(seconds: 30));
+      print('🔄 Fetching ${topStocks.length} stocks via proxy...');
+      
+      final response = await http.get(url).timeout(const Duration(seconds: 45));
+      
+      print('📡 Response status: ${response.statusCode}');
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         
         if (data['quoteResponse'] == null || data['quoteResponse']['result'] == null) {
-          print('❌ Invalid response from Yahoo Finance');
+          print('❌ Invalid response structure');
           return [];
         }
         
@@ -138,7 +132,7 @@ class StockApiService {
           }
         }
         
-        print('✅ Parsed ${stocks.length} stocks successfully');
+        print('✅ Successfully parsed ${stocks.length} stocks!');
         return stocks;
         
       } else {
