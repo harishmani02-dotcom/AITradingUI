@@ -23,7 +23,7 @@ class StockMover {
 
 class StockApiService {
   // Replace with your Alpha Vantage API key
-  static const String _apiKey = 'YOUR_API_KEY_HERE';
+  static const String _apiKey = 'W3YWTWU0LQMF83KQ';
   static const String _baseUrl = 'https://www.alphavantage.co/query';
   
   // Top Indian stocks
