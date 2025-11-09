@@ -1,4 +1,5 @@
-name:ai_trading_signals
+# yaml
+name: ai_trading_signals
 description: A Flutter project.
 
 environment:
@@ -36,4 +37,5 @@ flutter:
   uses-material-design: true
   assets:
     - .env  # NEW: Add this line
+
 
