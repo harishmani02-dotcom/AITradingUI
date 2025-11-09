@@ -81,15 +81,15 @@ class _NewsScreenState extends State<NewsScreen> {
 
       for (var source in _rssSources) {
         try {
-          debugPrint('📡 Fetching from ${source.name}...');
+          debugPrint('ðŸ“¡ Fetching from ${source.name}...');
           final articles = await _fetchFromRSS(source);
           if (articles.isNotEmpty) {
             allArticles.addAll(articles);
             successCount++;
-            debugPrint('✅ Got ${articles.length} articles from ${source.name}');
+            debugPrint('âœ… Got ${articles.length} articles from ${source.name}');
           }
         } catch (e) {
-          debugPrint('⚠️ Failed to fetch from ${source.name}: $e');
+          debugPrint('âš ï¸ Failed to fetch from ${source.name}: $e');
         }
       }
 
@@ -113,9 +113,9 @@ class _NewsScreenState extends State<NewsScreen> {
         _errorMessage = '';
       });
 
-      debugPrint('✅ Loaded ${articlesToShow.length} articles from $successCount sources');
+      debugPrint('âœ… Loaded ${articlesToShow.length} articles from $successCount sources');
     } catch (e) {
-      debugPrint('❌ Error loading news: $e');
+      debugPrint('âŒ Error loading news: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
@@ -417,13 +417,20 @@ class _NewsScreenState extends State<NewsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Premium Vibes- Curated collection of Latest news',
+                                'Premium Vibes',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
+                              Text(
+                                'Full Access Unlocked',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -437,7 +444,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFADFF2F),
+                      color: const Color(0xFF2D3748),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: const Color(0xFF4B5563),
@@ -450,7 +457,7 @@ class _NewsScreenState extends State<NewsScreen> {
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
-                            'All News Unlocked',
+                            'All Signals Unlocked',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14,
