@@ -1,74 +1,57 @@
+// dart
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
-class StockMover {
-  final String symbol;
-  final String name;
-  final double price;
-  final double change;
-  final double changePercent;
-  final String volume;
-  final String signal;
-
-  StockMover({
-    required this.symbol,
-    required this.name,
-    required this.price,
-    required this.change,
-    required this.changePercent,
-    required this.volume,
-    required this.signal,
-  });
-
-  factory StockMover.fromJson(Map<String, dynamic> json) {
-    return StockMover(
-      symbol: json['symbol'] ?? '',
-      name: json['name'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      change: (json['change'] ?? 0).toDouble(),
-      changePercent: (json['changePercent'] ?? 0).toDouble(),
-      volume: json['volume'] ?? '0',
-      signal: json['signal'] ?? 'Hold',
-    );
-  }
-}
+import 'stock_mover.dart';
 
 class StockApiService {
-  // ⚠️ REPLACE WITH YOUR VERCEL URL
-  static const String _apiUrl = 'https://YOUR-APP.vercel.app/api/stocks';
-  
+  final String? apiKey;
+
+  StockApiService({this.apiKey});
+
+  // Replace these endpoints with real provider endpoints
+  static const _gainersUrl = 'https://api.example.com/top_gainers';
+  static const _losersUrl = 'https://api.example.com/top_losers';
+  static const _volumeUrl = 'https://api.example.com/volume_buzzers';
+
   Future<List<StockMover>> fetchTopGainers() async {
-    final data = await _fetchData();
-    if (data == null) return [];
-    return (data['gainers'] as List).map((e) => StockMover.fromJson(e)).toList();
+    return _fetchList(_gainersUrl);
   }
-  
+
   Future<List<StockMover>> fetchTopLosers() async {
-    final data = await _fetchData();
-    if (data == null) return [];
-    return (data['losers'] as List).map((e) => StockMover.fromJson(e)).toList();
+    return _fetchList(_losersUrl);
   }
-  
+
   Future<List<StockMover>> fetchVolumeBuzzers() async {
-    final data = await _fetchData();
-    if (data == null) return [];
-    return (data['buzzers'] as List).map((e) => StockMover.fromJson(e)).toList();
+    return _fetchList(_volumeUrl);
   }
-  
-  Future<Map<String, dynamic>?> _fetchData() async {
+
+  Future<List<StockMover>> _fetchList(String url) async {
     try {
-      print('🔄 Fetching from backend...');
-      final res = await http.get(Uri.parse(_apiUrl)).timeout(Duration(seconds: 15));
-      
-      if (res.statusCode == 200) {
-        print('✅ Got data from backend');
-        return json.decode(res.body);
+      final headers = <String, String>{
+        'Accept': 'application/json',
+        if (apiKey != null) 'Authorization': 'Bearer $apiKey',
+      };
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final body = json.decode(response.body);
+        // Expect an array at top-level or adjust according to API
+        final list = body is List ? body : (body['data'] ?? []);
+        if (list is List) {
+          return list
+              .map((item) => StockMover.fromJson(item as Map<String, dynamic>))
+              .toList();
+        }
+      } else {
+        // You can parse error message here if the API returns structured errors
+        throw Exception('HTTP ${response.statusCode}');
       }
-      print('❌ Error: ${res.statusCode}');
-      return null;
     } catch (e) {
-      print('❌ Error: $e');
-      return null;
+      // Log error in development; return empty list so UI can handle empty state
+      // print('API fetch error for $url : $e');
     }
+    return [];
   }
 }
