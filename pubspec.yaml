@@ -17,6 +17,8 @@ dependencies:
   url_launcher: ^6.2.0
   flutter_dotenv: ^5.1.0  # NEW: For API key management
   webfeed: ^0.7.0  # ADD THIS LINE - for RSS parsing
+  intl: ^0.18.1
+  connectivity_plus: ^4.0.1
 
 dev_dependencies:
   flutter_test:
@@ -35,6 +37,7 @@ flutter:
   uses-material-design: true
   assets:
     - .env  # NEW: Add this line
+
 
 
 
