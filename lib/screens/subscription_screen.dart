@@ -1,32 +1,25 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/razorpay_service.dart';
 import '../providers/auth_provider.dart';
-
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
-
   @override
   State<SubscriptionScreen> createState() => _SubscriptionScreenState();
 }
-
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   bool _isProcessing = false;
-
   Future<void> _handlePayment() async {
     // Prevent double-tap
     if (_isProcessing) return;
-
     setState(() => _isProcessing = true);
-
     try {
       final user = Supabase.instance.client.auth.currentUser;
-
       if (user == null) {
         throw Exception('Please login first');
       }
-
       // Initialize Razorpay payment
       final razorpayService = RazorpayService(
         context: context,
@@ -34,7 +27,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         userId: user.id,
         onSuccess: (paymentId) async {
           debugPrint('✅ Payment ID: $paymentId');
-          
           // Show success message
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -45,10 +37,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               ),
             );
           }
-          
           // ⭐ Wait 3 seconds for database to update
           await Future.delayed(const Duration(seconds: 3));
-          
           if (mounted) {
             // ⭐ Navigate to home and remove all previous routes
             Navigator.of(context).pushNamedAndRemoveUntil(
@@ -60,7 +50,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         onFailure: (error) {
           debugPrint('❌ Payment failed: $error');
           setState(() => _isProcessing = false);
-          
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -72,13 +61,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           }
         },
       );
-
       // Open Razorpay checkout
       razorpayService.openCheckout();
-     
     } catch (e) {
       setState(() => _isProcessing = false);
-     
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -89,7 +75,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       }
     }
   }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -110,7 +95,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
           child: Column(
             children: [
               const SizedBox(height: 20),
-             
               // Premium Badge
               Container(
                 padding: const EdgeInsets.all(32),
@@ -170,14 +154,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ],
                 ),
               ),
-
               const SizedBox(height: 32),
-
               // Features List
               _buildFeatureCard(),
-
               const SizedBox(height: 32),
-
               // Subscribe Button
               SizedBox(
                 width: double.infinity,
@@ -210,9 +190,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                 ),
               ),
-
               const SizedBox(height: 16),
-
               // Trust Badge
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -232,9 +210,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 32),
-
               // Cancel Anytime Note
               Container(
                 padding: const EdgeInsets.all(16),
@@ -267,7 +243,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
     );
   }
-
   Widget _buildFeatureCard() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -310,7 +285,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       ),
     );
   }
-
   Widget _buildFeatureItem(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
