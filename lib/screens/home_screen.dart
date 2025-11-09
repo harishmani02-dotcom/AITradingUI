@@ -325,398 +325,454 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           child: SafeArea(
-            child: Column(
-              children: [
-                const SizedBox(height: 4),
-                
-                // 1. AI TREND RADAR BANNER - Ultra Compact
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AIChatScreen()),
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isPremium
-                            ? [
-                                const Color(0xFF8B5CF6).withOpacity(0.9),
-                                const Color(0xFF7C3AED).withOpacity(0.8),
-                              ]
-                            : [
-                                const Color(0xFF06B6D4).withOpacity(0.9),
-                                const Color(0xFF0EA5E9).withOpacity(0.8),
-                              ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
-                              .withOpacity(0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+            child: signalsProvider.isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4),
                     ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            isPremium ? Icons.diamond_rounded : Icons.auto_awesome_rounded,
-                            color: Colors.white,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                isPremium ? '✨ Premium Vibes' : '🚀 AI Trend Radar',
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white70,
-                                  letterSpacing: 0.2,
-                                  height: 1.2,
+                  )
+                : CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 4),
+                            
+                            // 1. AI TREND RADAR BANNER
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => const AIChatScreen()),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: isPremium
+                                        ? [
+                                            const Color(0xFF8B5CF6).withOpacity(0.9),
+                                            const Color(0xFF7C3AED).withOpacity(0.8),
+                                          ]
+                                        : [
+                                            const Color(0xFF06B6D4).withOpacity(0.9),
+                                            const Color(0xFF0EA5E9).withOpacity(0.8),
+                                          ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
+                                          .withOpacity(0.25),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    AnimatedBuilder(
+                                      animation: _pulseController,
+                                      builder: (context, child) {
+                                        return Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.2 + (_pulseController.value * 0.1)),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Icon(
+                                            isPremium ? Icons.diamond_rounded : Icons.auto_awesome_rounded,
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            isPremium ? '✨ Premium Vibes' : '🚀 AI Trend Radar',
+                                            style: const TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white70,
+                                              letterSpacing: 0.2,
+                                            ),
+                                          ),
+                                          Text(
+                                            isPremium ? 'Full Access Unlocked' : 'Chat with AI, Get Insights',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              color: Colors.white,
+                                              letterSpacing: -0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.all(5),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        color: Colors.white,
+                                        size: 14,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              Text(
-                                isPremium ? 'Full Access Unlocked' : 'Chat with AI, Get Insights',
+                            ),
+
+                            // 2. UPGRADE BANNER
+                            if (!isPremium)
+                              Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF2DD4BF),
+                                      Color(0xFF06B6D4),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF06B6D4).withOpacity(0.25),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(Icons.stars_rounded, color: Colors.white, size: 15),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '5 Sample Signals',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.2,
+                                            ),
+                                          ),
+                                          Text(
+                                            'Unlock All Features',
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w800,
+                                              letterSpacing: -0.2,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const SubscriptionScreen(),
+                                          ),
+                                        ).then((_) {
+                                          _handleRefresh();
+                                        });
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.white,
+                                        foregroundColor: const Color(0xFF0891B2),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        elevation: 0,
+                                        minimumSize: Size.zero,
+                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        '₹499/mo',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 10,
+                                          letterSpacing: -0.1,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // 3. STATUS BAR
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.05),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(5),
+                                    decoration: BoxDecoration(
+                                      color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
+                                          .withOpacity(0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Icon(
+                                      isPremium ? Icons.verified_rounded : Icons.whatshot_rounded,
+                                      color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
+                                      size: 14,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      isPremium ? 'All Signals Unlocked' : 'Live AI Signals',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                        color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.1),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.schedule_rounded,
+                                          size: 11,
+                                          color: Colors.white.withOpacity(0.6),
+                                        ),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          '6 PM IST',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            color: Colors.white.withOpacity(0.8),
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // 4. SEARCH BAR
+                            Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.1),
+                                  width: 1,
+                                ),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: _onSearchChanged,
                                 style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
                                   color: Colors.white,
-                                  letterSpacing: -0.3,
-                                  height: 1.2,
+                                  letterSpacing: -0.2,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Search stocks...',
+                                  hintStyle: TextStyle(
+                                    color: Colors.white.withOpacity(0.4),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.2,
+                                  ),
+                                  prefixIcon: Icon(
+                                    Icons.search_rounded,
+                                    color: Colors.white.withOpacity(0.5),
+                                    size: 18,
+                                  ),
+                                  suffixIcon: _searchQuery.isNotEmpty
+                                      ? IconButton(
+                                          icon: Icon(
+                                            Icons.close_rounded,
+                                            color: Colors.white.withOpacity(0.6),
+                                            size: 16,
+                                          ),
+                                          onPressed: _clearSearch,
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        )
+                                      : null,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 10,
+                                  ),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+
+                            // Search Results Info
+                            if (_searchQuery.isNotEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      'Found ${filteredSignals.length} result${filteredSignals.length == 1 ? '' : 's'}',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.white.withOpacity(0.6),
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    TextButton(
+                                      onPressed: _clearSearch,
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      ),
+                                      child: const Text(
+                                        'Clear',
+                                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.white.withOpacity(0.8),
-                          size: 16,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
 
-                // 2. UPGRADE BANNER - Ultra Compact
-                if (!isPremium)
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF2DD4BF),
-                          Color(0xFF06B6D4),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF06B6D4).withOpacity(0.25),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.stars_rounded, color: Colors.white, size: 14),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            '5 Sample • Unlock All Features',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: -0.2,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Text(
-                            '₹499/mo',
-                            style: TextStyle(
-                              color: Color(0xFF0891B2),
-                              fontWeight: FontWeight.w900,
-                              fontSize: 11,
-                              letterSpacing: -0.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                // 3. STATUS BAR - Ultra Compact
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
-                              .withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Icon(
-                          isPremium ? Icons.verified_rounded : Icons.whatshot_rounded,
-                          color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
-                          size: 14,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          isPremium ? 'All Signals Unlocked' : 'Live AI Signals',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
-                            letterSpacing: 0.2,
-                            height: 1.2,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.schedule_rounded,
-                              size: 11,
-                              color: Colors.white.withOpacity(0.6),
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              '6 PM IST',
-                              style: TextStyle(
-                                fontSize: 9,
-                                color: Colors.white.withOpacity(0.8),
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.2,
+                            // 5. SUMMARY STATS
+                            if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
+                              Container(
+                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.1),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _buildStatItem(
+                                      'Buy',
+                                      signalsProvider.buySignalsCount.toString(),
+                                      const Color(0xFF10B981),
+                                      Icons.trending_up_rounded,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 28,
+                                      color: Colors.white.withOpacity(0.1),
+                                    ),
+                                    _buildStatItem(
+                                      'Sell',
+                                      signalsProvider.sellSignalsCount.toString(),
+                                      const Color(0xFFEF4444),
+                                      Icons.trending_down_rounded,
+                                    ),
+                                    Container(
+                                      width: 1,
+                                      height: 28,
+                                      color: Colors.white.withOpacity(0.1),
+                                    ),
+                                    _buildStatItem(
+                                      'Hold',
+                                      signalsProvider.holdSignalsCount.toString(),
+                                      const Color(0xFF8B5CF6),
+                                      Icons.remove_rounded,
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
+                              const SizedBox(height: 4),
+                            ],
                           ],
                         ),
                       ),
+
+                      // Signals List
+                      filteredSignals.isEmpty
+                          ? SliverFillRemaining(
+                              child: _buildEmptyState(_searchQuery.isNotEmpty, isPremium),
+                            )
+                          : SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final signal = filteredSignals[index];
+                                  return SignalCard(
+                                    signal: signal,
+                                    showDetails: isPremium,
+                                  );
+                                },
+                                childCount: filteredSignals.length,
+                              ),
+                            ),
+                      
+                      const SliverToBoxAdapter(
+                        child: SizedBox(height: 20),
+                      ),
                     ],
                   ),
-                ),
-
-                // 4. SEARCH BAR - Ultra Compact
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Colors.white.withOpacity(0.1),
-                      width: 1,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                      letterSpacing: -0.2,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Search stocks...',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withOpacity(0.4),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: -0.2,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: Colors.white.withOpacity(0.5),
-                        size: 18,
-                      ),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: Icon(
-                                Icons.close_rounded,
-                                color: Colors.white.withOpacity(0.6),
-                                size: 16,
-                              ),
-                              onPressed: _clearSearch,
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 10,
-                      ),
-                      isDense: true,
-                    ),
-                  ),
-                ),
-
-                // Search Results Info
-                if (_searchQuery.isNotEmpty) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Found ${filteredSignals.length} result${filteredSignals.length == 1 ? '' : 's'}',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: Colors.white.withOpacity(0.6),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: _clearSearch,
-                          style: TextButton.styleFrom(
-                            foregroundColor: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          ),
-                          child: const Text(
-                            'Clear',
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
+          ),
+        ),
+      ),                  ),
                 ],
-
-                // 5. SUMMARY STATS - Compact
-                if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildStatItem(
-                          'Buy',
-                          signalsProvider.buySignalsCount.toString(),
-                          const Color(0xFF10B981),
-                          Icons.trending_up_rounded,
-                        ),
-                        Container(
-                          width: 1,
-                          height: 32,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                        _buildStatItem(
-                          'Sell',
-                          signalsProvider.sellSignalsCount.toString(),
-                          const Color(0xFFEF4444),
-                          Icons.trending_down_rounded,
-                        ),
-                        Container(
-                          width: 1,
-                          height: 32,
-                          color: Colors.white.withOpacity(0.1),
-                        ),
-                        _buildStatItem(
-                          'Hold',
-                          signalsProvider.holdSignalsCount.toString(),
-                          const Color(0xFF8B5CF6),
-                          Icons.remove_rounded,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                ],
-
-                // Signals List
-                Expanded(
-                  child: signalsProvider.isLoading
-                      ? Center(
-                          child: CircularProgressIndicator(
-                            color: isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4),
-                          ),
-                        )
-                      : filteredSignals.isEmpty
-                          ? _buildEmptyState(_searchQuery.isNotEmpty, isPremium)
-                          : ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 20, top: 8),
-                              itemCount: filteredSignals.length,
-                              itemBuilder: (context, index) {
-                                final signal = filteredSignals[index];
-                                return SignalCard(
-                                  signal: signal,
-                                  showDetails: isPremium,
-                                );
-                              },
-                            ),
-                ),
               ],
             ),
           ),
-        ),
+        ],
       ),
+    ),
+  ),
+),
       floatingActionButton: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -800,31 +856,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(6),
+          padding: const EdgeInsets.all(5),
           decoration: BoxDecoration(
             color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(6),
           ),
-          child: Icon(icon, color: color, size: 16),
+          child: Icon(icon, color: color, size: 14),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
         Text(
           value,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.w900,
             color: color,
             letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 2),
         Text(
           label,
           style: TextStyle(
-            fontSize: 10,
+            fontSize: 9,
             color: Colors.white.withOpacity(0.6),
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.3,
+            letterSpacing: 0.2,
           ),
         ),
       ],
