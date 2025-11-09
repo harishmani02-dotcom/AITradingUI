@@ -79,7 +79,6 @@ class _NewsScreenState extends State<NewsScreen> {
       List<NewsItem> allArticles = [];
       int successCount = 0;
 
-      // Try to fetch from each source
       for (var source in _rssSources) {
         try {
           debugPrint('📡 Fetching from ${source.name}...');
@@ -98,16 +97,13 @@ class _NewsScreenState extends State<NewsScreen> {
         throw Exception('Could not fetch news from any source. Please check your internet connection.');
       }
 
-      // Sort by date (newest first)
       allArticles.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      // Filter to show only recent news (last 48 hours to ensure we have content)
       final cutoffDate = DateTime.now().subtract(const Duration(hours: 48));
       final recentArticles = allArticles.where((article) {
         return article.timestamp.isAfter(cutoffDate);
       }).toList();
 
-      // If no recent articles, show all articles
       final articlesToShow = recentArticles.isNotEmpty ? recentArticles : allArticles;
 
       setState(() {
@@ -160,13 +156,8 @@ class _NewsScreenState extends State<NewsScreen> {
           final link = item.link ?? '';
           final pubDate = item.pubDate ?? DateTime.now();
 
-          // Clean HTML from description
           final cleanDesc = _stripHtml(description);
-
-          // Extract stock symbol
           final symbol = _extractStockSymbol(title + ' ' + cleanDesc);
-
-          // Analyze sentiment
           final sentiment = _analyzeSentiment(title + ' ' + cleanDesc);
 
           return NewsItem(
@@ -189,7 +180,6 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   String _stripHtml(String text) {
-    // Remove HTML tags
     final exp = RegExp(r'<[^>]*>', multiLine: true);
     return text
         .replaceAll(exp, '')
@@ -205,15 +195,10 @@ class _NewsScreenState extends State<NewsScreen> {
   String _cleanText(String text) {
     if (text.isEmpty) return 'No description available';
     String cleaned = _stripHtml(text);
-    
-    // Remove multiple spaces
     cleaned = cleaned.replaceAll(RegExp(r'\s+'), ' ');
-    
-    // Limit length
     if (cleaned.length > 200) {
       cleaned = '${cleaned.substring(0, 200)}...';
     }
-    
     return cleaned.trim();
   }
 
@@ -319,7 +304,7 @@ class _NewsScreenState extends State<NewsScreen> {
       case 'Bearish':
         return const Color(0xFFEF4444);
       default:
-        return const Color(0xFF6B7280);
+        return const Color(0xFF8B5CF6);
     }
   }
 
@@ -370,20 +355,23 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF1F2937),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF1F2937),
+        elevation: 0,
         title: const Text(
-          'Indian Stock News',
+          'Market News',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
+            fontSize: 20,
           ),
         ),
-        backgroundColor: const Color(0xFF1E40AF),
         actions: [
           IconButton(
             icon: Icon(
               _autoRefresh ? Icons.autorenew : Icons.refresh,
-              color: Colors.white,
+              color: const Color(0xFFA78BFA),
             ),
             onPressed: () {
               setState(() {
@@ -393,101 +381,98 @@ class _NewsScreenState extends State<NewsScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white),
+            icon: const Icon(Icons.refresh, color: Color(0xFFA78BFA)),
             onPressed: _isLoading ? null : _loadNews,
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadNews,
+        backgroundColor: const Color(0xFF2D3748),
+        color: const Color(0xFFA78BFA),
         child: Column(
           children: [
-            // Status Bar
+            // Status Bar with Premium Banner
             Container(
-              padding: const EdgeInsets.all(16),
-              color: const Color(0xFFDBEAFE),
-              child: Row(
+              margin: const EdgeInsets.all(16),
+              child: Column(
                 children: [
-                  const Icon(
-                    Icons.newspaper,
-                    color: Color(0xFF1E40AF),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // Premium Banner
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
                       children: [
-                        const Text(
-                          'Live Indian Market News',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF1E40AF),
+                        const Icon(Icons.diamond, color: Colors.white, size: 24),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Premium Vibes',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              Text(
+                                'Full Access Unlocked',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Text(
-                          'Updated: ${_getTimeAgo(_lastRefresh)} • ${_allNews.length} articles',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
+                        const Icon(Icons.arrow_forward, color: Colors.white),
                       ],
                     ),
                   ),
-                  if (_autoRefresh)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                  const SizedBox(height: 12),
+                  // Status Info
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2D3748),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFF4B5563),
+                        width: 1,
                       ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF10B981),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.autorenew, size: 12, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text(
-                            'LIVE',
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.verified, color: Color(0xFFA78BFA), size: 20),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'All Signals Unlocked',
                             style: TextStyle(
-                              fontSize: 10,
                               color: Colors.white,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            // Sources Banner
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                ),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.verified, color: Colors.white, size: 20),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Real-time news from ET, Moneycontrol, Business Standard',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                        ),
+                        Text(
+                          '${_getTimeAgo(_lastRefresh)}',
+                          style: const TextStyle(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -498,15 +483,12 @@ class _NewsScreenState extends State<NewsScreen> {
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: const Color(0xFF2D3748),
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                border: Border.all(
+                  color: const Color(0xFF4B5563),
+                  width: 1,
+                ),
               ),
               child: TextField(
                 controller: _searchController,
@@ -515,19 +497,20 @@ class _NewsScreenState extends State<NewsScreen> {
                     _searchQuery = value.toUpperCase();
                   });
                 },
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  hintText: 'Search by stock or keyword...',
+                  hintText: 'Search stocks...',
                   hintStyle: TextStyle(
-                    color: Colors.grey[400],
+                    color: Colors.grey[600],
                     fontSize: 14,
                   ),
                   prefixIcon: const Icon(
                     Icons.search,
-                    color: Color(0xFF1E40AF),
+                    color: Color(0xFF9CA3AF),
                   ),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear, color: Colors.grey),
+                          icon: const Icon(Icons.clear, color: Color(0xFF9CA3AF)),
                           onPressed: () {
                             _searchController.clear();
                             setState(() => _searchQuery = '');
@@ -539,10 +522,10 @@ class _NewsScreenState extends State<NewsScreen> {
                     borderSide: BorderSide.none,
                   ),
                   filled: true,
-                  fillColor: Colors.white,
+                  fillColor: const Color(0xFF2D3748),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 12,
+                    vertical: 14,
                   ),
                 ),
               ),
@@ -557,12 +540,16 @@ class _NewsScreenState extends State<NewsScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const CircularProgressIndicator(),
+                          const CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFFA78BFA),
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             'Fetching latest market news...',
                             style: TextStyle(
-                              color: Colors.grey[600],
+                              color: Colors.grey[400],
                               fontSize: 14,
                             ),
                           ),
@@ -577,7 +564,7 @@ class _NewsScreenState extends State<NewsScreen> {
                               Icon(
                                 Icons.article_outlined,
                                 size: 64,
-                                color: Colors.grey[400],
+                                color: Colors.grey[700],
                               ),
                               const SizedBox(height: 16),
                               Text(
@@ -586,7 +573,7 @@ class _NewsScreenState extends State<NewsScreen> {
                                     : 'No results for "$_searchQuery"',
                                 style: TextStyle(
                                   fontSize: 18,
-                                  color: Colors.grey[600],
+                                  color: Colors.grey[400],
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
@@ -597,9 +584,9 @@ class _NewsScreenState extends State<NewsScreen> {
                                   child: Text(
                                     _errorMessage,
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       fontSize: 12,
-                                      color: Colors.red[600],
+                                      color: Colors.redAccent,
                                     ),
                                   ),
                                 ),
@@ -610,7 +597,7 @@ class _NewsScreenState extends State<NewsScreen> {
                                 icon: const Icon(Icons.refresh),
                                 label: const Text('Refresh News'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFF1E40AF),
+                                  backgroundColor: const Color(0xFFA78BFA),
                                   foregroundColor: Colors.white,
                                 ),
                               ),
@@ -620,7 +607,7 @@ class _NewsScreenState extends State<NewsScreen> {
                       : Stack(
                           children: [
                             ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 20),
+                              padding: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
                               itemCount: _filteredNews.length,
                               itemBuilder: (context, index) {
                                 return _buildNewsCard(_filteredNews[index]);
@@ -634,7 +621,7 @@ class _NewsScreenState extends State<NewsScreen> {
                                 child: LinearProgressIndicator(
                                   backgroundColor: Colors.transparent,
                                   valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF1E40AF),
+                                    Color(0xFFA78BFA),
                                   ),
                                 ),
                               ),
@@ -648,14 +635,21 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   Widget _buildNewsCard(NewsItem news) {
+    final sentimentColor = _getSentimentColor(news.sentiment);
+    final isBearish = news.sentiment == 'Bearish';
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: const Color(0xFF2D3748),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isBearish ? Colors.red[900]! : Colors.green[900]!,
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: sentimentColor.withOpacity(0.2),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -664,10 +658,11 @@ class _NewsScreenState extends State<NewsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header with Symbol and Sentiment
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: _getSentimentColor(news.sentiment).withOpacity(0.1),
+              color: sentimentColor.withOpacity(0.15),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
@@ -677,11 +672,11 @@ class _NewsScreenState extends State<NewsScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 10,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E40AF),
+                    color: const Color(0xFFA78BFA),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
@@ -696,79 +691,102 @@ class _NewsScreenState extends State<NewsScreen> {
                 const SizedBox(width: 8),
                 Icon(
                   _getSentimentIcon(news.sentiment),
-                  color: _getSentimentColor(news.sentiment),
-                  size: 18,
+                  color: sentimentColor,
+                  size: 20,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   news.sentiment,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: _getSentimentColor(news.sentiment),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: sentimentColor,
                   ),
                 ),
                 const Spacer(),
                 Text(
                   _getTimeAgo(news.timestamp),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
-                    color: Colors.grey[600],
+                    color: Color(0xFF9CA3AF),
                   ),
                 ),
               ],
             ),
           ),
+
+          // Content
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   news.title,
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF111827),
+                    color: Colors.white,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   news.summary,
                   style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[700],
-                    height: 1.5,
+                    fontSize: 13,
+                    color: Colors.grey[400],
+                    height: 1.4,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
                     Icon(
                       Icons.source,
-                      size: 14,
-                      color: Colors.grey[500],
+                      size: 13,
+                      color: Colors.grey[600],
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         news.source,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
+                          fontSize: 11,
+                          color: Colors.grey[500],
                           fontStyle: FontStyle.italic,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    TextButton.icon(
-                      onPressed: () => _openUrl(news.url),
-                      icon: const Icon(Icons.open_in_new, size: 14),
-                      label: const Text(
-                        'Read',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                    GestureDetector(
+                      onTap: () => _openUrl(news.url),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFA78BFA).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.open_in_new, size: 12, color: Color(0xFFA78BFA)),
+                            SizedBox(width: 4),
+                            Text(
+                              'Read',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFA78BFA),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
