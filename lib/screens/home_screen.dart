@@ -329,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 const SizedBox(height: 8),
                 
-                // 1. AI TREND RADAR BANNER
+                // 1. AI TREND RADAR BANNER - Compact
                 GestureDetector(
                   onTap: () {
                     Navigator.of(context).push(
@@ -337,8 +337,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -353,13 +353,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 const Color(0xFF0EA5E9).withOpacity(0.8),
                               ],
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
                           color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
                               .withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
@@ -369,20 +369,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           animation: _pulseController,
                           builder: (context, child) {
                             return Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2 + (_pulseController.value * 0.1)),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
                                 isPremium ? Icons.diamond_rounded : Icons.auto_awesome_rounded,
                                 color: Colors.white,
-                                size: 28,
+                                size: 20,
                               ),
                             );
                           },
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -390,17 +390,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               Text(
                                 isPremium ? '✨ Premium Vibes' : '🚀 AI Trend Radar',
                                 style: const TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 10,
                                   fontWeight: FontWeight.w600,
                                   color: Colors.white70,
-                                  letterSpacing: 0.5,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 2),
                               Text(
                                 isPremium ? 'Full Access Unlocked' : 'Chat with AI, Get Insights',
                                 style: const TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w800,
                                   color: Colors.white,
                                   letterSpacing: -0.3,
@@ -410,15 +410,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(
                             Icons.arrow_forward_rounded,
                             color: Colors.white,
-                            size: 20,
+                            size: 16,
                           ),
                         ),
                       ],
