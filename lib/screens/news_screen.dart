@@ -417,20 +417,13 @@ class _NewsScreenState extends State<NewsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Premium Vibes',
+                                'Premium Vibes- Curated collection of Latest news',
                                 style: TextStyle(
                                   color: Colors.white70,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              Text(
-                                'Full Access Unlocked',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
                               ),
                             ],
                           ),
@@ -444,7 +437,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2D3748),
+                      color: const Color(0xFFADFF2F),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: const Color(0xFF4B5563),
@@ -457,7 +450,7 @@ class _NewsScreenState extends State<NewsScreen> {
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
-                            'All Signals Unlocked',
+                            'All News Unlocked',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14,
