@@ -327,9 +327,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           child: SafeArea(
             child: Column(
               children: [
-                const SizedBox(height: 8),
+                const SizedBox(height: 4),
                 
-                // 1. AI TREND RADAR BANNER - Compact
+                // 1. AI TREND RADAR BANNER - Ultra Compact
                 GestureDetector(
                   onTap: () {
                     Navigator.of(context).push(
@@ -337,8 +337,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     );
                   },
                   child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -353,84 +353,74 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 const Color(0xFF0EA5E9).withOpacity(0.8),
                               ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
                           color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
-                              .withOpacity(0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
+                              .withOpacity(0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Row(
                       children: [
-                        AnimatedBuilder(
-                          animation: _pulseController,
-                          builder: (context, child) {
-                            return Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2 + (_pulseController.value * 0.1)),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Icon(
-                                isPremium ? Icons.diamond_rounded : Icons.auto_awesome_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isPremium ? '✨ Premium Vibes' : '🚀 AI Trend Radar',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white70,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                isPremium ? 'Full Access Unlocked' : 'Chat with AI, Get Insights',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                         Container(
                           padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(
-                            Icons.arrow_forward_rounded,
+                          child: Icon(
+                            isPremium ? Icons.diamond_rounded : Icons.auto_awesome_rounded,
                             color: Colors.white,
                             size: 16,
                           ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                isPremium ? '✨ Premium Vibes' : '🚀 AI Trend Radar',
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white70,
+                                  letterSpacing: 0.2,
+                                  height: 1.2,
+                                ),
+                              ),
+                              Text(
+                                isPremium ? 'Full Access Unlocked' : 'Chat with AI, Get Insights',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: -0.3,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.arrow_forward_rounded,
+                          color: Colors.white.withOpacity(0.8),
+                          size: 16,
                         ),
                       ],
                     ),
                   ),
                 ),
 
-                // 2. UPGRADE BANNER
+                // 2. UPGRADE BANNER - Ultra Compact
                 if (!isPremium)
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         begin: Alignment.topLeft,
@@ -440,76 +430,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           Color(0xFF06B6D4),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF06B6D4).withOpacity(0.3),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
+                          color: const Color(0xFF06B6D4).withOpacity(0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.stars_rounded, color: Colors.white, size: 24),
+                          child: const Icon(Icons.stars_rounded, color: Colors.white, size: 14),
                         ),
-                        const SizedBox(width: 14),
+                        const SizedBox(width: 8),
                         const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '5 Sample Signals',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
-                                ),
-                              ),
-                              SizedBox(height: 2),
-                              Text(
-                                'Unlock All Features',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: -0.2,
-                                ),
-                              ),
-                            ],
+                          child: Text(
+                            '5 Sample • Unlock All Features',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.2,
+                              height: 1.2,
+                            ),
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const SubscriptionScreen(),
-                              ),
-                            ).then((_) {
-                              _handleRefresh();
-                            });
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF0891B2),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Text(
                             '₹499/mo',
                             style: TextStyle(
+                              color: Color(0xFF0891B2),
                               fontWeight: FontWeight.w900,
-                              fontSize: 13,
+                              fontSize: 11,
                               letterSpacing: -0.2,
                             ),
                           ),
@@ -518,13 +482,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
 
-                // 3. STATUS BAR
+                // 3. STATUS BAR - Ultra Compact
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.1),
                       width: 1,
@@ -533,54 +497,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
                           color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
                               .withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Icon(
                           isPremium ? Icons.verified_rounded : Icons.whatshot_rounded,
                           color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
-                          size: 18,
+                          size: 14,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           isPremium ? 'All Signals Unlocked' : 'Live AI Signals',
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
                             letterSpacing: 0.2,
+                            height: 1.2,
                           ),
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
-                          ),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.schedule_rounded,
-                              size: 14,
+                              size: 11,
                               color: Colors.white.withOpacity(0.6),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 3),
                             Text(
                               '6 PM IST',
                               style: TextStyle(
-                                fontSize: 11,
+                                fontSize: 9,
                                 color: Colors.white.withOpacity(0.8),
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: 0.3,
+                                letterSpacing: 0.2,
                               ),
                             ),
                           ],
@@ -590,12 +553,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
                 ),
 
-                // 4. SEARCH BAR
+                // 4. SEARCH BAR - Ultra Compact
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: Colors.white.withOpacity(0.1),
                       width: 1,
@@ -605,7 +568,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     controller: _searchController,
                     onChanged: _onSearchChanged,
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                       letterSpacing: -0.2,
@@ -614,30 +577,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       hintText: 'Search stocks...',
                       hintStyle: TextStyle(
                         color: Colors.white.withOpacity(0.4),
-                        fontSize: 15,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         letterSpacing: -0.2,
                       ),
                       prefixIcon: Icon(
                         Icons.search_rounded,
                         color: Colors.white.withOpacity(0.5),
-                        size: 22,
+                        size: 18,
                       ),
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
                               icon: Icon(
                                 Icons.close_rounded,
                                 color: Colors.white.withOpacity(0.6),
-                                size: 20,
+                                size: 16,
                               ),
                               onPressed: _clearSearch,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
                             )
                           : null,
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
+                        horizontal: 10,
+                        vertical: 10,
                       ),
+                      isDense: true,
                     ),
                   ),
                 ),
@@ -674,14 +640,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   const SizedBox(height: 8),
                 ],
 
-                // 5. SUMMARY STATS
+                // 5. SUMMARY STATS - Compact
                 if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
                   Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    padding: const EdgeInsets.all(16),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
                       border: Border.all(
                         color: Colors.white.withOpacity(0.1),
                         width: 1,
@@ -698,7 +664,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         Container(
                           width: 1,
-                          height: 40,
+                          height: 32,
                           color: Colors.white.withOpacity(0.1),
                         ),
                         _buildStatItem(
@@ -709,7 +675,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                         Container(
                           width: 1,
-                          height: 40,
+                          height: 32,
                           color: Colors.white.withOpacity(0.1),
                         ),
                         _buildStatItem(
@@ -721,7 +687,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                 ],
 
                 // Signals List
@@ -834,18 +800,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.all(6),
           decoration: BoxDecoration(
             color: color.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: color, size: 20),
+          child: Icon(icon, color: color, size: 16),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           value,
           style: TextStyle(
-            fontSize: 22,
+            fontSize: 18,
             fontWeight: FontWeight.w900,
             color: color,
             letterSpacing: -0.5,
@@ -855,10 +821,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         Text(
           label,
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 10,
             color: Colors.white.withOpacity(0.6),
             fontWeight: FontWeight.w600,
-            letterSpacing: 0.5,
+            letterSpacing: 0.3,
           ),
         ),
       ],
