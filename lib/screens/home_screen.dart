@@ -18,15 +18,27 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   bool _isRefreshingSubscription = false;
+  late AnimationController _shimmerController;
+  late AnimationController _pulseController;
 
   @override
   void initState() {
     super.initState();
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+    
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeScreen();
     });
@@ -35,6 +47,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _shimmerController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -105,22 +119,31 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Row(
           children: [
-            Icon(Icons.workspace_premium, color: Colors.white),
-            SizedBox(width: 12),
-            Expanded(
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.workspace_premium, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
               child: Text(
-                'Welcome back, Premium Member! 🎉',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                'Welcome back, Premium fam! ✨',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
             ),
           ],
         ),
-        backgroundColor: Color(0xFF7C3AED),
-        duration: Duration(seconds: 3),
+        backgroundColor: const Color(0xFF8B5CF6),
+        duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
       ),
     );
   }
@@ -205,522 +228,724 @@ class _HomeScreenState extends State<HomeScreen> {
             .toList();
 
     return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
-          "Today's Signals",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isPremium
+                      ? [const Color(0xFF8B5CF6), const Color(0xFFC084FC)]
+                      : [const Color(0xFF06B6D4), const Color(0xFF0EA5E9)],
+                ),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.rocket_launch_rounded, size: 20, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Today's Signals",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    fontSize: 18,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        backgroundColor: const Color(0xFF1E40AF),
+        backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
           if (_isRefreshingSubscription)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
               child: SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4),
+                  ),
                 ),
               ),
             )
           else
-            IconButton(
-              icon: const Icon(Icons.refresh, color: Colors.white),
-              tooltip: 'Refresh subscription status',
-              onPressed: _handleRefresh,
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                tooltip: 'Refresh',
+                onPressed: _handleRefresh,
+              ),
             ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AlertsScreen()),
-              );
-            },
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.notifications_rounded, color: Colors.white),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AlertsScreen()),
+                );
+              },
+            ),
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: _handleRefresh,
-        child: Column(
-          children: [
-            // 1. AI TREND RADAR BANNER - Always visible, clickable for both users
-            GestureDetector(
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AIChatScreen()),
-                );
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isPremium
-                        ? [const Color(0xFF7C3AED), const Color(0xFF9F7AEA)]
-                        : [const Color(0xFF059669), const Color(0xFF10B981)],
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      isPremium ? Icons.workspace_premium : Icons.radar,
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            isPremium ? 'Premium Active' : 'AI Trend Radar',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white70,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                          Text(
-                            isPremium
-                                ? 'Full Access Unlocked'
-                                : 'AI Insights Available',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                              letterSpacing: 0.2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      isPremium ? Icons.verified : Icons.arrow_forward_ios,
-                      color: Colors.white,
-                      size: isPremium ? 20 : 16,
-                    ),
-                  ],
-                ),
-              ),
+        color: isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4),
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Color(0xFF0F172A),
+                Color(0xFF1E293B),
+                Color(0xFF0F172A),
+              ],
             ),
-
-            // 2. UPGRADE BANNER - Only for non-premium users
-            if (!isPremium)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF7C3AED), Color(0xFF9F7AEA)],
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.star_rounded, 
-                      color: Colors.white, 
-                      size: 16
-                    ),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        '5 Sample Signals',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const SubscriptionScreen(),
-                          ),
-                        ).then((_) {
-                          _handleRefresh();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: const Color(0xFF7C3AED),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12, 
-                          vertical: 6
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                      child: const Text(
-                        'Upgrade ₹499/mo',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            // 3. STATUS BAR
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: isPremium 
-                    ? const Color(0xFFF3E8FF) 
-                    : const Color(0xFFDBEAFE),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    isPremium ? Icons.verified : Icons.trending_up,
-                    color: isPremium 
-                        ? const Color(0xFF7C3AED) 
-                        : const Color(0xFF059669),
-                    size: 16,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      isPremium 
-                          ? 'All Signals Unlocked' 
-                          : 'Live AI Signals',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isPremium 
-                            ? const Color(0xFF7C3AED)
-                            : const Color(0xFF047857),
-                        letterSpacing: 0.2,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          ),
+          child: SafeArea(
+            child: Column(
+              children: [
+                const SizedBox(height: 8),
+                
+                // 1. AI TREND RADAR BANNER
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AIChatScreen()),
+                    );
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(
-                        color: isPremium 
-                            ? const Color(0xFFE9D5FF)
-                            : const Color(0xFFBFDBFE),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isPremium
+                            ? [
+                                const Color(0xFF8B5CF6).withOpacity(0.9),
+                                const Color(0xFF7C3AED).withOpacity(0.8),
+                              ]
+                            : [
+                                const Color(0xFF06B6D4).withOpacity(0.9),
+                                const Color(0xFF0EA5E9).withOpacity(0.8),
+                              ],
                       ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
+                              .withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                    child: const Text(
-                      '6 PM IST',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Color(0xFF6B7280),
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // 4. SEARCH BAR
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFE5E7EB)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Search stocks...',
-                  hintStyle: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF6B7280),
-                    size: 20,
-                  ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Color(0xFF9CA3AF),
-                            size: 18,
-                          ),
-                          onPressed: _clearSearch,
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(),
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  isDense: true,
-                ),
-              ),
-            ),
-
-            // Search Results Info
-            if (_searchQuery.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Text(
-                      'Found ${filteredSignals.length} result${filteredSignals.length == 1 ? '' : 's'}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF6B7280),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: _clearSearch,
-                      style: TextButton.styleFrom(
-                        foregroundColor: const Color(0xFF1E40AF),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text(
-                        'Clear',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
-
-            // 5. SUMMARY STATS
-            if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: const Color(0xFFE5E7EB)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildStatItem(
-                      'Buy',
-                      signalsProvider.buySignalsCount.toString(),
-                      const Color(0xFF059669),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 28,
-                      color: const Color(0xFFE5E7EB),
-                    ),
-                    _buildStatItem(
-                      'Sell',
-                      signalsProvider.sellSignalsCount.toString(),
-                      const Color(0xFFDC2626),
-                    ),
-                    Container(
-                      width: 1,
-                      height: 28,
-                      color: const Color(0xFFE5E7EB),
-                    ),
-                    _buildStatItem(
-                      'Hold',
-                      signalsProvider.holdSignalsCount.toString(),
-                      const Color(0xFF6B7280),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
-
-            // Signals List
-            Expanded(
-              child: signalsProvider.isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : filteredSignals.isEmpty
-                      ? _buildEmptyState(_searchQuery.isNotEmpty)
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 20),
-                          itemCount: filteredSignals.length,
-                          itemBuilder: (context, index) {
-                            final signal = filteredSignals[index];
-                            return SignalCard(
-                              signal: signal,
-                              showDetails: isPremium,
+                    child: Row(
+                      children: [
+                        AnimatedBuilder(
+                          animation: _pulseController,
+                          builder: (context, child) {
+                            return Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2 + (_pulseController.value * 0.1)),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                isPremium ? Icons.diamond_rounded : Icons.auto_awesome_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                             );
                           },
                         ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isPremium ? '✨ Premium Vibes' : '🚀 AI Trend Radar',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white70,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                isPremium ? 'Full Access Unlocked' : 'Chat with AI, Get Insights',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.arrow_forward_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // 2. UPGRADE BANNER
+                if (!isPremium)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF2DD4BF),
+                          Color(0xFF06B6D4),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF06B6D4).withOpacity(0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.stars_rounded, color: Colors.white, size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '5 Sample Signals',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Unlock All Features',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const SubscriptionScreen(),
+                              ),
+                            ).then((_) {
+                              _handleRefresh();
+                            });
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF0891B2),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            '₹499/mo',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 13,
+                              letterSpacing: -0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                // 3. STATUS BAR
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
+                              .withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(
+                          isPremium ? Icons.verified_rounded : Icons.whatshot_rounded,
+                          color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          isPremium ? 'All Signals Unlocked' : 'Live AI Signals',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.schedule_rounded,
+                              size: 14,
+                              color: Colors.white.withOpacity(0.6),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '6 PM IST',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.white.withOpacity(0.8),
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // 4. SEARCH BAR
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.1),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      letterSpacing: -0.2,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Search stocks...',
+                      hintStyle: TextStyle(
+                        color: Colors.white.withOpacity(0.4),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.2,
+                      ),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: Colors.white.withOpacity(0.5),
+                        size: 22,
+                      ),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: Colors.white.withOpacity(0.6),
+                                size: 20,
+                              ),
+                              onPressed: _clearSearch,
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Search Results Info
+                if (_searchQuery.isNotEmpty) ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Found ${filteredSignals.length} result${filteredSignals.length == 1 ? '' : 's'}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.6),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: _clearSearch,
+                          style: TextButton.styleFrom(
+                            foregroundColor: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          ),
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                // 5. SUMMARY STATS
+                if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildStatItem(
+                          'Buy',
+                          signalsProvider.buySignalsCount.toString(),
+                          const Color(0xFF10B981),
+                          Icons.trending_up_rounded,
+                        ),
+                        Container(
+                          width: 1,
+                          height: 40,
+                          color: Colors.white.withOpacity(0.1),
+                        ),
+                        _buildStatItem(
+                          'Sell',
+                          signalsProvider.sellSignalsCount.toString(),
+                          const Color(0xFFEF4444),
+                          Icons.trending_down_rounded,
+                        ),
+                        Container(
+                          width: 1,
+                          height: 40,
+                          color: Colors.white.withOpacity(0.1),
+                        ),
+                        _buildStatItem(
+                          'Hold',
+                          signalsProvider.holdSignalsCount.toString(),
+                          const Color(0xFF8B5CF6),
+                          Icons.remove_rounded,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                // Signals List
+                Expanded(
+                  child: signalsProvider.isLoading
+                      ? Center(
+                          child: CircularProgressIndicator(
+                            color: isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4),
+                          ),
+                        )
+                      : filteredSignals.isEmpty
+                          ? _buildEmptyState(_searchQuery.isNotEmpty, isPremium)
+                          : ListView.builder(
+                              padding: const EdgeInsets.only(bottom: 20, top: 8),
+                              itemCount: filteredSignals.length,
+                              itemBuilder: (context, index) {
+                                final signal = filteredSignals[index];
+                                return SignalCard(
+                                  signal: signal,
+                                  showDetails: isPremium,
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: isPremium
+                ? [const Color(0xFF8B5CF6), const Color(0xFFC084FC)]
+                : [const Color(0xFF06B6D4), const Color(0xFF0EA5E9)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
+                  .withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: FloatingActionButton(
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AIChatScreen()),
+            );
+          },
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          child: const Icon(Icons.chat_bubble_rounded, size: 26),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 20,
+              offset: const Offset(0, -5),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: _onNavBarTap,
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.transparent,
+          selectedItemColor: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
+          unselectedItemColor: Colors.white.withOpacity(0.4),
+          selectedFontSize: 12,
+          unselectedFontSize: 11,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.2),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
+          elevation: 0,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.newspaper_rounded),
+              label: 'News',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.trending_up_rounded),
+              label: 'Movers',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.notifications_rounded),
+              label: 'Alerts',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_rounded),
+              label: 'Profile',
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const AIChatScreen()),
-          );
-        },
-        backgroundColor: const Color(0xFF7C3AED),
-        child: const Icon(Icons.chat_bubble_outline),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onNavBarTap,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF1E40AF),
-        unselectedItemColor: Colors.grey,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.article_outlined),
-            activeIcon: Icon(Icons.article),
-            label: 'News',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.trending_up_outlined),
-            activeIcon: Icon(Icons.trending_up),
-            label: 'Movers',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_outlined),
-            activeIcon: Icon(Icons.notifications),
-            label: 'Alerts',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, Color color) {
+  Widget _buildStatItem(String label, String value, Color color, IconData icon) {
     return Column(
       children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(height: 8),
         Text(
           value,
           style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
             color: color,
-            letterSpacing: 0.5,
+            letterSpacing: -0.5,
           ),
         ),
-        const SizedBox(height: 3),
+        const SizedBox(height: 2),
         Text(
           label,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
-            color: Color(0xFF6B7280),
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.3,
+            color: Colors.white.withOpacity(0.6),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildEmptyState(bool isSearching) {
+  Widget _buildEmptyState(bool isSearching, bool isPremium) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            isSearching ? Icons.search_off : Icons.info_outline,
-            size: 64,
-            color: Colors.grey[400],
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Icon(
+              isSearching ? Icons.search_off_rounded : Icons.info_outline_rounded,
+              size: 64,
+              color: Colors.white.withOpacity(0.3),
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
             isSearching
-                ? 'No signals found for "$_searchQuery"'
+                ? 'No signals found'
                 : 'No signals available',
             style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
+              fontSize: 20,
+              color: Colors.white.withOpacity(0.8),
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             isSearching
-                ? 'Try searching for another stock'
+                ? 'Try a different stock symbol'
                 : 'Signals update daily at 6 PM IST',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.grey[500],
+              color: Colors.white.withOpacity(0.5),
+              fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
           ),
           if (isSearching) ...[
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: _clearSearch,
-              icon: const Icon(Icons.clear),
-              label: const Text('Clear Search'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E40AF),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+            const SizedBox(height: 24),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: LinearGradient(
+                  colors: isPremium
+                      ? [const Color(0xFF8B5CF6), const Color(0xFFC084FC)]
+                      : [const Color(0xFF06B6D4), const Color(0xFF0EA5E9)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
+                        .withOpacity(0.3),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: _clearSearch,
+                icon: const Icon(Icons.clear_rounded),
+                label: const Text('Clear Search'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  shadowColor: Colors.transparent,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    letterSpacing: -0.2,
+                  ),
                 ),
               ),
             ),
