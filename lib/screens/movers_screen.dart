@@ -50,7 +50,7 @@ class _MoversScreenState extends State<MoversScreen>
   }
 
   Future<void> _loadData() async {
-    if (_isLoading) return; // Prevent multiple simultaneous loads
+    if (_isLoading) return;
     
     setState(() {
       _isLoading = true;
@@ -58,7 +58,6 @@ class _MoversScreenState extends State<MoversScreen>
     });
     
     try {
-      // Fetch real-time data from Yahoo Finance
       final gainers = await _apiService.fetchTopGainers();
       final losers = await _apiService.fetchTopLosers();
       final buzzers = await _apiService.fetchVolumeBuzzers();
@@ -94,24 +93,25 @@ class _MoversScreenState extends State<MoversScreen>
       case 'Sell':
         return const Color(0xFFEF4444);
       default:
-        return const Color(0xFF6B7280);
+        return const Color(0xFF8B5CF6);
     }
   }
 
-  IconData _getSignalIcon(String signal) {
+  Color _getSignalBackgroundColor(String signal) {
     switch (signal) {
       case 'Buy':
-        return Icons.arrow_upward;
+        return const Color(0xFF10B981).withOpacity(0.15);
       case 'Sell':
-        return Icons.arrow_downward;
+        return const Color(0xFFEF4444).withOpacity(0.15);
       default:
-        return Icons.horizontal_rule;
+        return const Color(0xFF8B5CF6).withOpacity(0.15);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0F1419),
       appBar: AppBar(
         title: const Text(
           'Top Movers',
@@ -120,9 +120,9 @@ class _MoversScreenState extends State<MoversScreen>
             color: Colors.white,
           ),
         ),
-        backgroundColor: const Color(0xFF1E40AF),
+        backgroundColor: const Color(0xFF1A1F28),
+        elevation: 0,
         actions: [
-          // Live indicator
           if (!_isLoading && _topGainers.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(right: 16),
@@ -151,10 +151,10 @@ class _MoversScreenState extends State<MoversScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: Colors.white,
+          indicatorColor: const Color(0xFF8B5CF6),
           indicatorWeight: 3,
           labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
+          unselectedLabelColor: Colors.white54,
           labelStyle: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -177,17 +177,19 @@ class _MoversScreenState extends State<MoversScreen>
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,
+        backgroundColor: const Color(0xFF1A1F28),
+        color: const Color(0xFF8B5CF6),
         child: Column(
           children: [
             // Info Banner
             Container(
               padding: const EdgeInsets.all(16),
-              color: const Color(0xFFDBEAFE),
+              color: const Color(0xFF1A1F28),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.info_outline,
-                    color: Color(0xFF1E40AF),
+                    color: const Color(0xFF8B5CF6),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -196,7 +198,7 @@ class _MoversScreenState extends State<MoversScreen>
                       _getInfoText(),
                       style: const TextStyle(
                         fontSize: 12,
-                        color: Color(0xFF1E40AF),
+                        color: Colors.white70,
                       ),
                     ),
                   ),
@@ -205,7 +207,7 @@ class _MoversScreenState extends State<MoversScreen>
                       _getTimeAgo(_lastUpdated!),
                       style: const TextStyle(
                         fontSize: 10,
-                        color: Color(0xFF1E40AF),
+                        color: Colors.white54,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -217,16 +219,16 @@ class _MoversScreenState extends State<MoversScreen>
             if (_errorMessage != null)
               Container(
                 padding: const EdgeInsets.all(12),
-                color: Colors.red.shade50,
+                color: const Color(0xFFEF4444).withOpacity(0.1),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                    const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(
-                          color: Colors.red.shade700,
+                        style: const TextStyle(
+                          color: Color(0xFFEF4444),
                           fontSize: 12,
                         ),
                       ),
@@ -242,13 +244,15 @@ class _MoversScreenState extends State<MoversScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircularProgressIndicator(),
+                          CircularProgressIndicator(
+                            color: Color(0xFF8B5CF6),
+                          ),
                           SizedBox(height: 16),
                           Text(
                             'Analyzing 200 stocks...',
                             style: TextStyle(
                               fontSize: 14,
-                              color: Colors.grey,
+                              color: Colors.white54,
                             ),
                           ),
                         ],
@@ -298,23 +302,23 @@ class _MoversScreenState extends State<MoversScreen>
             Icon(
               Icons.inbox_outlined,
               size: 64,
-              color: Colors.grey[400],
+              color: Colors.white24,
             ),
             const SizedBox(height: 16),
-            Text(
+            const Text(
               'No data available',
               style: TextStyle(
                 fontSize: 16,
-                color: Colors.grey[600],
+                color: Colors.white54,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Pull down to refresh',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey[500],
+                color: Colors.white38,
               ),
             ),
           ],
@@ -326,180 +330,166 @@ class _MoversScreenState extends State<MoversScreen>
       padding: const EdgeInsets.all(16),
       itemCount: movers.length,
       itemBuilder: (context, index) {
-        return _buildMoverCard(movers[index], index + 1, isGainer);
+        return _buildMoverCard(movers[index], index + 1);
       },
     );
   }
 
-  Widget _buildMoverCard(StockMover mover, int rank, bool? isGainer) {
+  Widget _buildMoverCard(StockMover mover, int rank) {
     final isPositive = mover.changePercent > 0;
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: const Color(0xFF1A1F28),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _getSignalColor(mover.signal).withOpacity(0.3),
+          width: 2,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Rank Badge
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: rank <= 3
-                    ? (isGainer == true
-                        ? const Color(0xFF10B981)
-                        : isGainer == false
-                            ? const Color(0xFFEF4444)
-                            : const Color(0xFF7C3AED))
-                    : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  '#$rank',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: rank <= 3 ? Colors.white : const Color(0xFF6B7280),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Stock Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    mover.symbol,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF111827),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    mover.name,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[600],
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
+            // Header Row
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.show_chart,
-                        size: 14,
-                        color: Colors.grey[500],
-                      ),
-                      const SizedBox(width: 4),
                       Text(
-                        'Vol: ${mover.volume}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[600],
+                        mover.symbol,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
                         ),
                       ),
                     ],
+                  ),
+                ),
+                Text(
+                  'â‚¹${mover.price.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 12),
+            
+            // Signal Badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _getSignalBackgroundColor(mover.signal),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    mover.signal.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: _getSignalColor(mover.signal),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    mover.signal == 'Buy' 
+                        ? Icons.arrow_upward 
+                        : mover.signal == 'Sell'
+                            ? Icons.arrow_downward
+                            : Icons.horizontal_rule,
+                    size: 16,
+                    color: _getSignalColor(mover.signal),
                   ),
                 ],
               ),
             ),
-
-            // Price & Change
+            
+            const SizedBox(height: 16),
+            
+            // Confidence Bar
             Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Confidence:',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.white54,
+                      ),
+                    ),
+                    Text(
+                      '${(mover.changePercent.abs() * 10).clamp(0, 100).toStringAsFixed(1)}%',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: (mover.changePercent.abs() * 0.1).clamp(0, 1),
+                    backgroundColor: Colors.white12,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _getSignalColor(mover.signal),
+                    ),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
+            
+            const SizedBox(height: 16),
+            
+            const Divider(color: Colors.white12, height: 1),
+            
+            const SizedBox(height: 12),
+            
+            // Analysis Factors
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Analysis Factors:',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white54,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  '₹${mover.price.toStringAsFixed(2)}',
+                  'RSI: ${(50 + (mover.changePercent * 2)).clamp(0, 100).toStringAsFixed(1)}',
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF111827),
+                    fontSize: 13,
+                    color: Colors.white70,
                   ),
                 ),
                 const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isPositive
-                        ? const Color(0xFF10B981).withOpacity(0.1)
-                        : const Color(0xFFEF4444).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isPositive ? Icons.arrow_upward : Icons.arrow_downward,
-                        size: 12,
-                        color: isPositive
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFEF4444),
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        '${isPositive ? '+' : ''}${mover.changePercent.toStringAsFixed(2)}%',
-                        style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.bold,
-                          color: isPositive
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFFEF4444),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getSignalColor(mover.signal).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: _getSignalColor(mover.signal).withOpacity(0.3),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _getSignalIcon(mover.signal),
-                        size: 10,
-                        color: _getSignalColor(mover.signal),
-                      ),
-                      const SizedBox(width: 3),
-                      Text(
-                        mover.signal,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: _getSignalColor(mover.signal),
-                        ),
-                      ),
-                    ],
+                Text(
+                  'Votes: ${_generateVotes(mover.signal)}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
                   ),
                 ),
               ],
@@ -508,5 +498,16 @@ class _MoversScreenState extends State<MoversScreen>
         ),
       ),
     );
+  }
+  
+  String _generateVotes(String signal) {
+    // Generate mock votes based on signal
+    if (signal == 'Buy') {
+      return '4 Buy, 1 Sell, 0 Hold';
+    } else if (signal == 'Sell') {
+      return '2 Buy, 4 Sell, 0 Hold';
+    } else {
+      return '1 Buy, 1 Sell, 3 Hold';
+    }
   }
 }
