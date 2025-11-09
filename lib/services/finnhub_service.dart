@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
  
 class FinnhubService {
-  static const String _apiKey = 'YOUR_API_KEY'; // Replace with your key
+  static const String _apiKey = 'd488rvpr01qnpsnmm2i0d488rvpr01qnpsnmm2ig'; // Replace with your key
   static const String _baseUrl = 'https://finnhub.io/api/v1';
  
   Future<List<Map<String, dynamic>>> getTopMovers(String type) async {
