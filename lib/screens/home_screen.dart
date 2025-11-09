@@ -1,3 +1,17 @@
+Fwd:
+Harish Kumar<harishmani02@gmail.com>
+​
+Harish Kumar s m​
+CAUTION: This email originated from outside Hexaware. Do not click links or open attachments unless you recognize the sender and are sure the content is safe.
+
+
+---------- Forwarded message ---------
+From: Harish Kumar <harishmani02@gmail.com>
+Date: Mon, 10 Nov 2025, 04:47
+Subject:
+To: Harish Kumar <harishmani02@gmail.com>
+
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -159,6 +173,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await signalsProvider.fetchTodaySignals(isPremium: isPremium);
     
     debugPrint('âœ… Signals loaded: ${signalsProvider.signals.length}');
+  }
+
+  Future<Map<String, dynamic>> _fetchMarketSentiment() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('market_sentiment')
+          .select('sentiment, sentiment_score, last_updated')
+          .order('last_updated', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response != null) {
+        return {
+          'sentiment': response['sentiment'] ?? 'NEUTRAL',
+          'score': response['sentiment_score'] ?? 50.0,
+          'lastUpdated': response['last_updated'],
+        };
+      }
+    } catch (e) {
+      debugPrint('âŒ Error fetching market sentiment: $e');
+    }
+    
+    return {
+      'sentiment': 'NEUTRAL',
+      'score': 50.0,
+      'lastUpdated': null,
+    };
   }
 
   Future<void> _handleRefresh() async {
