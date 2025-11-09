@@ -67,12 +67,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final user = Supabase.instance.client.auth.currentUser;
 
       if (user == null) {
-        debugPrint('⚠️ No authenticated user');
+        debugPrint('âš ï¸ No authenticated user');
         setState(() => _isRefreshingSubscription = false);
         return;
       }
 
-      debugPrint('🔄 Refreshing subscription status for user: ${user.id}');
+      debugPrint('ðŸ”„ Refreshing subscription status for user: ${user.id}');
 
       final response = await Supabase.instance.client
           .from('app_users')
@@ -84,9 +84,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final isSubscribed = response['subscription_status'] ?? false;
         final subscriptionEnd = response['subscription_end'];
 
-        debugPrint('✅ Subscription status loaded: $isSubscribed');
+        debugPrint('âœ… Subscription status loaded: $isSubscribed');
         if (subscriptionEnd != null) {
-          debugPrint('📅 Subscription ends: $subscriptionEnd');
+          debugPrint('ðŸ“… Subscription ends: $subscriptionEnd');
         }
 
         await authProvider.refreshUserProfile();
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _showPremiumWelcome();
         }
       } else {
-        debugPrint('📝 Creating user record in app_users...');
+        debugPrint('ðŸ“ Creating user record in app_users...');
         await Supabase.instance.client.from('app_users').insert({
           'user_id': user.id,
           'email': user.email,
@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await authProvider.refreshUserProfile();
       }
     } catch (e) {
-      debugPrint('❌ Error refreshing subscription: $e');
+      debugPrint('âŒ Error refreshing subscription: $e');
     } finally {
       if (mounted) {
         setState(() => _isRefreshingSubscription = false);
@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
-                'Welcome back, Premium fam! ✨',
+                'Welcome back, Premium fam! âœ¨',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
             ),
@@ -154,11 +154,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
     
-    debugPrint('📊 Loading signals (Premium: $isPremium)');
+    debugPrint('ðŸ“Š Loading signals (Premium: $isPremium)');
     
     await signalsProvider.fetchTodaySignals(isPremium: isPremium);
     
-    debugPrint('✅ Signals loaded: ${signalsProvider.signals.length}');
+    debugPrint('âœ… Signals loaded: ${signalsProvider.signals.length}');
   }
 
   Future<void> _handleRefresh() async {
@@ -397,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Text(
-                                            isPremium ? '✨ Premium Vibes' : '🚀 AI Trend Radar',
+                                            isPremium ? 'âœ¨ Premium Vibes' : 'ðŸš€ AI Trend Radar',
                                             style: const TextStyle(
                                               fontSize: 9,
                                               fontWeight: FontWeight.w600,
@@ -515,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                       ),
                                       child: const Text(
-                                        '₹499/mo',
+                                        'â‚¹499/mo',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w900,
                                           fontSize: 10,
@@ -763,16 +763,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   ),
           ),
         ),
-      ),                  ),
-                ],
-              ],
-            ),
-          ),
-        ],
       ),
-    ),
-  ),
-),
       floatingActionButton: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
