@@ -1,5 +1,5 @@
 const axios = require('axios');
-
+ 
 const stocks = [
   'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS', 'ICICIBANK.NS',
   'HINDUNILVR.NS', 'ITC.NS', 'SBIN.NS', 'BHARTIARTL.NS', 'KOTAKBANK.NS',
@@ -22,32 +22,18 @@ const stocks = [
   'PERSISTENT.NS', 'COFORGE.NS', 'JUBLFOOD.NS', 'TATACOMM.NS', 'DIXON.NS',
   'VOLTAS.NS', 'HAVELLS.NS', 'CROMPTON.NS', 'BATAINDIA.NS', 'PEL.NS',
 ];
-
-let cache = null;
-let lastFetch = 0;
-const CACHE_TIME = 5 * 60 * 1000; // 5 minutes
-
+ 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Content-Type', 'application/json');
   
   try {
-    const now = Date.now();
-    
-    if (cache && (now - lastFetch) < CACHE_TIME) {
-      console.log('✅ Returning cached data');
-      return res.json(cache);
-    }
-    
-    console.log('🔄 Fetching fresh data...');
+    console.log('Fetching stock data...');
     
     const response = await axios.get(
       `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${stocks.join(',')}`,
-      {
-        headers: { 'User-Agent': 'Mozilla/5.0' },
-        timeout: 30000
-      }
+      { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 30000 }
     );
     
     const results = response.data.quoteResponse.result;
@@ -59,21 +45,20 @@ module.exports = async (req, res) => {
       if (!price || !prev) continue;
       
       const change = price - prev;
-      const changePct = (change / prev) * 100;
+      const pct = (change / prev) * 100;
       
       allStocks.push({
         symbol: q.symbol.replace('.NS', ''),
         name: q.shortName || q.longName || q.symbol,
-        price,
-        change,
-        changePercent: changePct,
+        price, change,
+        changePercent: pct,
         volume: formatVol(q.regularMarketVolume || 0),
         volumeNum: q.regularMarketVolume || 0,
-        signal: getSignal(changePct)
+        signal: pct > 2 ? 'Buy' : pct < -2 ? 'Sell' : 'Hold'
       });
     }
     
-    cache = {
+    const data = {
       gainers: allStocks.filter(s => s.changePercent > 0)
         .sort((a, b) => b.changePercent - a.changePercent).slice(0, 15),
       losers: allStocks.filter(s => s.changePercent < 0)
@@ -82,23 +67,15 @@ module.exports = async (req, res) => {
       lastUpdated: new Date().toISOString()
     };
     
-    lastFetch = now;
-    console.log(`✅ Success: ${allStocks.length} stocks`);
-    res.json(cache);
-    
+    res.json(data);
   } catch (err) {
-    console.error('❌ Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 };
-
-function getSignal(pct) {
-  return pct > 2 ? 'Buy' : pct < -2 ? 'Sell' : 'Hold';
-}
-
+ 
 function formatVol(v) {
   if (v >= 1e7) return `${(v / 1e7).toFixed(1)}Cr`;
   if (v >= 1e5) return `${(v / 1e5).toFixed(1)}L`;
   if (v >= 1e3) return `${(v / 1e3).toFixed(1)}K`;
   return v.toString();
-        }
+}
