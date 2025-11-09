@@ -1,4 +1,4 @@
-import 'dart:convert';
+  import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class StockMover {
@@ -34,38 +34,65 @@ class StockMover {
 }
 
 class StockApiService {
-  final supabase = Supabase.instance.client;
+  final _supabase = Supabase.instance.client;
   
   Future<List<StockMover>> fetchTopGainers() async {
-    final data = await supabase
-        .from('stock_movers')
-        .select('stocks')
-        .eq('category', 'gainers')
-        .single();
-    
-    final List stocks = json.decode(data['stocks']);
-    return stocks.map((e) => StockMover.fromJson(e)).toList();
+    try {
+      print('🔄 Fetching gainers from Supabase...');
+      
+      final response = await _supabase
+          .from('stock_data')
+          .select('data')
+          .eq('category', 'gainers')
+          .single();
+      
+      final List stockList = json.decode(response['data']);
+      print('✅ Got ${stockList.length} gainers');
+      
+      return stockList.map((e) => StockMover.fromJson(e)).toList();
+    } catch (e) {
+      print('❌ Error: $e');
+      return [];
+    }
   }
   
   Future<List<StockMover>> fetchTopLosers() async {
-    final data = await supabase
-        .from('stock_movers')
-        .select('stocks')
-        .eq('category', 'losers')
-        .single();
-    
-    final List stocks = json.decode(data['stocks']);
-    return stocks.map((e) => StockMover.fromJson(e)).toList();
+    try {
+      print('🔄 Fetching losers from Supabase...');
+      
+      final response = await _supabase
+          .from('stock_data')
+          .select('data')
+          .eq('category', 'losers')
+          .single();
+      
+      final List stockList = json.decode(response['data']);
+      print('✅ Got ${stockList.length} losers');
+      
+      return stockList.map((e) => StockMover.fromJson(e)).toList();
+    } catch (e) {
+      print('❌ Error: $e');
+      return [];
+    }
   }
   
   Future<List<StockMover>> fetchVolumeBuzzers() async {
-    final data = await supabase
-        .from('stock_movers')
-        .select('stocks')
-        .eq('category', 'buzzers')
-        .single();
-    
-    final List stocks = json.decode(data['stocks']);
-    return stocks.map((e) => StockMover.fromJson(e)).toList();
+    try {
+      print('🔄 Fetching buzzers from Supabase...');
+      
+      final response = await _supabase
+          .from('stock_data')
+          .select('data')
+          .eq('category', 'buzzers')
+          .single();
+      
+      final List stockList = json.decode(response['data']);
+      print('✅ Got ${stockList.length} buzzers');
+      
+      return stockList.map((e) => StockMover.fromJson(e)).toList();
+    } catch (e) {
+      print('❌ Error: $e');
+      return [];
+    }
   }
 }
