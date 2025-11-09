@@ -1,17 +1,3 @@
-Fwd:
-Harish Kumar<harishmani02@gmail.com>
-​
-Harish Kumar s m​
-CAUTION: This email originated from outside Hexaware. Do not click links or open attachments unless you recognize the sender and are sure the content is safe.
-
-
----------- Forwarded message ---------
-From: Harish Kumar <harishmani02@gmail.com>
-Date: Mon, 10 Nov 2025, 04:47
-Subject:
-To: Harish Kumar <harishmani02@gmail.com>
-
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
