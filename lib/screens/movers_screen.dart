@@ -97,6 +97,17 @@ class _MoversScreenState extends State<MoversScreen>
     }
   }
 
+  IconData _getSignalIcon(String signal) {
+    switch (signal) {
+      case 'Buy':
+        return Icons.arrow_upward;
+      case 'Sell':
+        return Icons.arrow_downward;
+      default:
+        return Icons.horizontal_rule;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -176,9 +187,9 @@ class _MoversScreenState extends State<MoversScreen>
               color: const Color(0xFF1A1F28),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.info_outline,
-                    color: const Color(0xFF8B5CF6),
+                    color: Color(0xFF8B5CF6),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
@@ -288,7 +299,7 @@ class _MoversScreenState extends State<MoversScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.inbox_outlined,
               size: 64,
               color: Colors.white24,
@@ -378,7 +389,7 @@ class _MoversScreenState extends State<MoversScreen>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: _getSignalBackgroundColor(mover.signal),
+                color: _getSignalColor(mover.signal).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -395,11 +406,7 @@ class _MoversScreenState extends State<MoversScreen>
                   ),
                   const SizedBox(width: 6),
                   Icon(
-                    mover.signal == 'Buy' 
-                        ? Icons.arrow_upward 
-                        : mover.signal == 'Sell'
-                            ? Icons.arrow_downward
-                            : Icons.horizontal_rule,
+                    _getSignalIcon(mover.signal),
                     size: 16,
                     color: _getSignalColor(mover.signal),
                   ),
