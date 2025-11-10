@@ -50,7 +50,7 @@ class _MoversScreenState extends State<MoversScreen>
   }
 
   Future<void> _loadData() async {
-    if (_isLoading) return;
+    if (_isLoading) return; // Prevent multiple simultaneous loads
     
     setState(() {
       _isLoading = true;
@@ -58,6 +58,7 @@ class _MoversScreenState extends State<MoversScreen>
     });
     
     try {
+      // Fetch real-time data from Yahoo Finance
       final gainers = await _apiService.fetchTopGainers();
       final losers = await _apiService.fetchTopLosers();
       final buzzers = await _apiService.fetchVolumeBuzzers();
@@ -97,14 +98,14 @@ class _MoversScreenState extends State<MoversScreen>
     }
   }
 
-  Color _getSignalBackgroundColor(String signal) {
+  IconData _getSignalIcon(String signal) {
     switch (signal) {
       case 'Buy':
-        return const Color(0xFF10B981).withOpacity(0.15);
+        return Icons.arrow_upward;
       case 'Sell':
-        return const Color(0xFFEF4444).withOpacity(0.15);
+        return Icons.arrow_downward;
       default:
-        return const Color(0xFF8B5CF6).withOpacity(0.15);
+        return Icons.horizontal_rule;
     }
   }
 
