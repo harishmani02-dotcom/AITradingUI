@@ -174,6 +174,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await _refreshSubscriptionStatus();
     await _loadSignals();
   }
+  
+  // New method to handle navigation to the Subscription Screen
+  void _navigateToSubscriptionScreen() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const SubscriptionScreen(),
+      ),
+    ).then((_) {
+      _handleRefresh();
+    });
+  }
 
   void _onSearchChanged(String query) {
     setState(() {
@@ -193,6 +204,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     setState(() {
       _currentIndex = index;
     });
+    
+    // NOTE: The index logic below has been updated to remove the Alerts screen 
+    // (formerly index 3). The new indices are:
+    // 0: Home
+    // 1: News
+    // 2: Movers
+    // 3: Profile (formerly 4)
     switch (index) {
       case 0:
         break;
@@ -208,16 +226,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         break;
       case 3:
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const AlertsScreen()),
-        ).then((_) => setState(() => _currentIndex = 0));
-        break;
-      case 4:
-        Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => const ProfileScreen()),
         ).then((_) {
           setState(() => _currentIndex = 0);
           _handleRefresh();
         });
+        break;
+      default: // Added default case to prevent crashes if index is out of range
+        setState(() => _currentIndex = 0);
         break;
     }
   }
@@ -368,7 +384,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       MaterialPageRoute(builder: (_) => const AIChatScreen()),
                                     );
                                   },
-                                  child: Container( // ERROR FIX 1: Missing closing ')' from previous code
+                                  child: Container(
                                     margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                     decoration: BoxDecoration(
@@ -409,7 +425,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                           },
                                         ),
                                         const SizedBox(width: 10),
-                                        Expanded( // ERROR FIX 2: Too many positional arguments (removed trailing comma/argument)
+                                        Expanded(
                                           child: Column(
                                             crossAxisAlignment: CrossAxisAlignment.start,
                                             children: [
@@ -495,10 +511,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                       ],
                                     ),
-                                  ), // ERROR FIX 3: Missing closing ')' for GestureDetector
+                                  ),
                                 );
                               },
-                            ), // ERROR FIX 4: Missing closing ')' for FutureBuilder
+                            ),
 
                             // 2. UPGRADE BANNER
                             if (!isPremium)
@@ -561,13 +577,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     ),
                                     ElevatedButton(
                                       onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => const SubscriptionScreen(),
-                                          ),
-                                        ).then((_) {
-                                          _handleRefresh();
-                                        });
+                                        _navigateToSubscriptionScreen();
                                       },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.white,
@@ -751,7 +761,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               ),
                             ],
 
-                            // 5. SUMMARY STATS (UPDATED FOR COMPACT LAYOUT)
+                            // 5. SUMMARY STATS (COMPACT LAYOUT)
                             if (signalsProvider.signals.isNotEmpty && _searchQuery.isEmpty) ...[
                               Container(
                                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -816,6 +826,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   return SignalCard(
                                     signal: signal,
                                     showDetails: isPremium,
+                                    // Pass the subscription navigation handler for locked cards
+                                    onTap: isPremium ? null : _navigateToSubscriptionScreen,
                                   );
                                 },
                                 childCount: filteredSignals.length,
@@ -829,7 +841,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-      // ERROR FIX 5: floatingActionButton and floatingActionButtonLocation were nested incorrectly
       floatingActionButton: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -895,10 +906,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               icon: Icon(Icons.trending_up_rounded),
               label: 'Movers',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.notifications_rounded),
-              label: 'Alerts',
-            ),
+            // REMOVED: Alerts Item (formerly index 3)
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),
               label: 'Profile',
@@ -909,20 +917,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  // -------------------------------------------------------------------------
-  // UPDATED _buildStatItem method for a more compact and scannable layout
-  // -------------------------------------------------------------------------
   Widget _buildStatItem(String label, String value, Color color, IconData icon) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Row(
-          mainAxisSize: MainAxisSize.min, // Keep the row content snug
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Simplified icon display
             Icon(icon, color: color, size: 14),
             const SizedBox(width: 4),
-            // Value is the most important element
             Text(
               value,
               style: TextStyle(
@@ -934,8 +937,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
-        const SizedBox(height: 2), // Reduced vertical spacing
-        // Label is smaller and less prominent
+        const SizedBox(height: 2),
         Text(
           label,
           style: TextStyle(
