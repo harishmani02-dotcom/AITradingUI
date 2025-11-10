@@ -13,7 +13,6 @@ import 'subscription_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -33,12 +32,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
       duration: const Duration(seconds: 2),
     )..repeat();
-    
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeScreen();
     });
@@ -59,21 +56,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Future<void> _refreshSubscriptionStatus() async {
     if (_isRefreshingSubscription) return;
-
     setState(() => _isRefreshingSubscription = true);
-
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final user = Supabase.instance.client.auth.currentUser;
-
       if (user == null) {
         debugPrint('⚠️ No authenticated user');
         setState(() => _isRefreshingSubscription = false);
         return;
       }
-
       debugPrint('🔄 Refreshing subscription status for user: ${user.id}');
-
       final response = await Supabase.instance.client
           .from('app_users')
           .select('subscription_status, subscription_end, email')
@@ -83,14 +75,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (response != null) {
         final isSubscribed = response['subscription_status'] ?? false;
         final subscriptionEnd = response['subscription_end'];
-
         debugPrint('✅ Subscription status loaded: $isSubscribed');
         if (subscriptionEnd != null) {
           debugPrint('📅 Subscription ends: $subscriptionEnd');
         }
-
         await authProvider.refreshUserProfile();
-
         if (isSubscribed && mounted) {
           _showPremiumWelcome();
         }
@@ -103,7 +92,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           'created_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         });
-        
         await authProvider.refreshUserProfile();
       }
     } catch (e) {
@@ -117,7 +105,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _showPremiumWelcome() {
     if (!mounted) return;
-    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -151,13 +138,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _loadSignals() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final signalsProvider = Provider.of<SignalsProvider>(context, listen: false);
-
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
-    
     debugPrint('📊 Loading signals (Premium: $isPremium)');
-    
     await signalsProvider.fetchTodaySignals(isPremium: isPremium);
-    
     debugPrint('✅ Signals loaded: ${signalsProvider.signals.length}');
   }
 
@@ -180,7 +163,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     } catch (e) {
       debugPrint('❌ Error fetching market sentiment: $e');
     }
-    
     return {
       'sentiment': 'NEUTRAL',
       'score': 50.0,
@@ -208,11 +190,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _onNavBarTap(int index) {
     if (index == _currentIndex) return;
-
     setState(() {
       _currentIndex = index;
     });
-
     switch (index) {
       case 0:
         break;
@@ -247,7 +227,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final authProvider = Provider.of<AuthProvider>(context);
     final signalsProvider = Provider.of<SignalsProvider>(context);
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
-
     final filteredSignals = _searchQuery.isEmpty
         ? signalsProvider.signals
         : signalsProvider.signals
@@ -349,23 +328,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: Column(
                           children: [
                             const SizedBox(height: 4),
-                            
                             // 1. AI TREND RADAR BANNER
                             FutureBuilder<Map<String, dynamic>>(
                               future: _fetchMarketSentiment(),
                               builder: (context, snapshot) {
                                 final sentiment = snapshot.data?['sentiment'] ?? 'NEUTRAL';
                                 final score = snapshot.data?['score'] ?? 50.0;
-                                
                                 final isBullish = sentiment == 'BULLISH';
                                 final isBearish = sentiment == 'BEARISH';
-                                
                                 Color primaryColor;
                                 Color secondaryColor;
                                 IconData sentimentIcon;
                                 String sentimentText;
                                 String sentimentEmoji;
-                                
+
                                 if (isBullish) {
                                   primaryColor = const Color(0xFF10B981);
                                   secondaryColor = const Color(0xFF059669);
@@ -385,7 +361,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   sentimentEmoji = '➡️';
                                   sentimentText = isPremium ? 'Premium - Neutral Market' : 'Market Neutral';
                                 }
-                                
+
                                 return GestureDetector(
                                   onTap: () {
                                     Navigator.of(context).push(
@@ -489,176 +465,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     decoration: BoxDecoration(
                                                       color: Colors.white.withOpacity(0.25),
                                                       borderRadius: BorderRadius.circular(4),
-                                                    ),
-                                                    child: Text(
-                                                      '${score.toStringAsFixed(0)}%',
-                                                      style: const TextStyle(
-                                                        fontSize: 9,
-                                                        fontWeight: FontWeight.w900,
-                                                        color: Colors.white,
-                                                        letterSpacing: -0.2,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        Container(
-                                          padding: const EdgeInsets.all(5),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.2),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: const Icon(
-                                            Icons.arrow_forward_rounded,
-                                            color: Colors.white,
-                                            size: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-
-                            // 2. UPGRADE BANNER
-                            if (!isPremium)
-                              Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Color(0xFF2DD4BF),
-                                      Color(0xFF06B6D4),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF06B6D4).withOpacity(0.25),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Icon(Icons.stars_rounded, color: Colors.white, size: 15),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            '5 Sample Signals',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w600,
-                                              letterSpacing: 0.2,
-                                            ),
-                                          ),
-                                          Text(
-                                            'Unlock All Features',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: -0.2,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                            builder: (_) => const SubscriptionScreen(),
-                                          ),
-                                        ).then((_) {
-                                          _handleRefresh();
-                                        });
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.white,
-                                        foregroundColor: const Color(0xFF0891B2),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                        elevation: 0,
-                                        minimumSize: Size.zero,
-                                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                      ),
-                                      child: const Text(
-                                        '₹499/mo',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 10,
-                                          letterSpacing: -0.1,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                            // 3. STATUS BAR
-                            Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.05),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: Colors.white.withOpacity(0.1),
-                                  width: 1,
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.all(5),
-                                    decoration: BoxDecoration(
-                                      color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
-                                          .withOpacity(0.15),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Icon(
-                                      isPremium ? Icons.verified_rounded : Icons.whatshot_rounded,
-                                      color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
-                                      size: 14,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      isPremium ? 'All Signals Unlocked' : 'Live AI Signals',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
-                                        color: isPremium ? const Color(0xFFA78BFA) : const Color(0xFF22D3EE),
-                                        letterSpacing: 0.1,
-                                      ),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
+                                                            decoration: BoxDecoration(
                                       color: Colors.white.withOpacity(0.08),
                                       borderRadius: BorderRadius.circular(6),
                                       border: Border.all(
