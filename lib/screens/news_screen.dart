@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webfeed/webfeed.dart';
@@ -19,7 +20,12 @@ class _NewsScreenState extends State<NewsScreen> {
   Timer? _refreshTimer;
   DateTime _lastRefresh = DateTime.now();
 
-  // New State: Filtering
+  // Gemini API Configuration
+  // NOTE: In a production Flutter app, this key should be secured, not hardcoded.
+  final String apiKey = ""; // Canvas will provide this at runtime
+  final String apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
+
+  // State: Filtering
   String _selectedSentimentFilter = 'All';
   String _selectedCategoryFilter = 'All';
 
@@ -47,7 +53,6 @@ class _NewsScreenState extends State<NewsScreen> {
 
   final List<String> _sentimentFilters = ['All', 'Bullish', 'Bearish', 'Neutral'];
   final List<String> _categoryFilters = ['All', 'My Watchlist', 'Market', 'Policy', 'Earnings'];
-  // We will map 'Market' to articles where symbol is 'MARKET'.
 
   @override
   void initState() {
@@ -77,11 +82,60 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
+  // --- GEMINI API CALL FOR SUMMARY ---
+  Future<String> _fetchAiSummary(String title, String summary) async {
+    final prompt = "Summarize the following financial news article in one short, impactful paragraph (maximum 3 sentences). Focus only on the market impact and key facts. Title: $title. Summary: $summary";
+
+    final payload = {
+        "contents": [
+            {"parts": [{"text": prompt}]}
+        ],
+        "systemInstruction": {
+            "parts": [{"text": "You are a concise financial news analyst. Your response must be purely the summary paragraph, with no preamble."}]
+        }
+    };
+
+    int retries = 0;
+    const maxRetries = 3;
+    const baseDelay = Duration(seconds: 1);
+
+    while (retries < maxRetries) {
+      try {
+        final response = await http.post(
+          Uri.parse('$apiUrl$apiKey'),
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode(payload),
+        ).timeout(const Duration(seconds: 10));
+
+        if (response.statusCode == 200) {
+          final jsonResponse = jsonDecode(response.body);
+          final text = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
+          return text ?? "Failed to generate AI summary.";
+        } else {
+          debugPrint('API Error: ${response.statusCode} - ${response.body}');
+        }
+      } catch (e) {
+        debugPrint('API Request failed (Retry $retries): $e');
+      }
+
+      retries++;
+      if (retries < maxRetries) {
+        await Future.delayed(baseDelay * (1 << (retries - 1))); // Exponential backoff
+      }
+    }
+    return "Failed to connect to AI service after multiple retries.";
+  }
+  // --- END GEMINI API CALL ---
+
   Future<void> _loadNews() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
+
+    // ... (rest of _loadNews remains the same)
 
     try {
       List<NewsItem> allArticles = [];
@@ -176,7 +230,7 @@ class _NewsScreenState extends State<NewsScreen> {
             timestamp: pubDate,
             source: source.name,
             url: link,
-            aiSummary: 'This is an AI-generated summary for the article about $symbol from ${source.name}. The sentiment is $sentiment. (Mock Summary)', // Mock summary generation
+            // REMOVED MOCK SUMMARY - it will be fetched on demand now
           );
         }).toList();
       }
@@ -319,7 +373,7 @@ class _NewsScreenState extends State<NewsScreen> {
       if (_selectedCategoryFilter == 'Earnings' && (news.title.contains('Q') || news.title.contains('Profit') || news.title.contains('Result'))) {
         return true;
       }
-      return false; 
+      return false;
     });
 
 
@@ -360,7 +414,7 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  // Helper to show the AI Summary Dialog
+  // Helper to show the AI Summary Dialog (Updated to fetch real data)
   void _showAiSummaryDialog(NewsItem news) {
     final Color primaryColor = _getSentimentColor(news.sentiment);
 
@@ -384,47 +438,86 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
             ],
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                news.aiSummary,
-                style: TextStyle(
-                  color: Colors.white.withOpacity(0.8),
-                  fontSize: 14,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
+          // Use FutureBuilder to handle the asynchronous API call
+          content: FutureBuilder<String>(
+            future: _fetchAiSummary(news.title, news.summary),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const SizedBox(
+                  height: 150,
+                  child: Center(
+                    child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
+                  ),
+                );
+              } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.contains("Failed")) {
+                return SizedBox(
+                  height: 150,
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, color: Color(0xFFEF4444)),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Error loading summary.',
+                          style: TextStyle(color: Colors.white.withOpacity(0.8)),
+                        ),
+                        Text(
+                          snapshot.data ?? '',
+                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
+                        )
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // Display the successful summary
+              final summaryText = snapshot.data!;
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Sentiment:',
+                    summaryText,
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 12,
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 14,
+                      height: 1.4,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      news.sentiment,
-                      style: TextStyle(
-                        color: primaryColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Text(
+                        'Analyzed Sentiment:',
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6),
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          news.sentiment,
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
           actions: [
             TextButton(
@@ -502,6 +595,8 @@ class _NewsScreenState extends State<NewsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredArticles = _filteredNews;
+
     return Scaffold(
       backgroundColor: const Color(0xFF1A1D2E),
       appBar: AppBar(
@@ -646,8 +741,8 @@ class _NewsScreenState extends State<NewsScreen> {
             ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 12)),
-            
-            // --- ENHANCEMENT 1: FILTERING CHIPS ---
+
+            // --- FILTERING CHIPS ---
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -688,9 +783,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
               ),
             ),
-            // --- END ENHANCEMENT 1 ---
-
-            // --- REMOVED THE OLD HEADER ROW ---
+            // --- END FILTERING CHIPS ---
 
             _isLoading && _allNews.isEmpty
                 ? SliverFillRemaining(
@@ -763,7 +856,7 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
-  // --- ENHANCEMENT 2 & 3: VISUAL DENSITY and AI SUMMARY BUTTON ---
+  // --- VISUAL DENSITY and AI SUMMARY BUTTON ---
   Widget _buildNewsCard(NewsItem news) {
     final sentimentColor = _getSentimentColor(news.sentiment);
 
@@ -830,7 +923,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     ),
                   ],
                 ),
-                
+
                 // Sentiment Tag
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -860,9 +953,9 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 10),
-            
+
             // Article Title and Summary (Core Content)
             Text(
               news.title,
@@ -888,7 +981,7 @@ class _NewsScreenState extends State<NewsScreen> {
             ),
 
             const SizedBox(height: 10),
-            
+
             // Row 3: Time Ago & AI Summary Button
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -900,9 +993,10 @@ class _NewsScreenState extends State<NewsScreen> {
                     fontSize: 11,
                   ),
                 ),
-                
+
                 // AI Summary Button (Enhancement 3)
                 GestureDetector(
+                  // Open the dialog to trigger the API call
                   onTap: () => _showAiSummaryDialog(news),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -927,7 +1021,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     ),
                   ),
                 ),
-                
+
               ],
             ),
           ],
@@ -947,7 +1041,7 @@ class NewsItem {
   final DateTime timestamp;
   final String source;
   final String url;
-  final String aiSummary; // New field for AI Summary
+  // Removed aiSummary field as it is fetched on demand
 
   NewsItem({
     required this.symbol,
@@ -957,7 +1051,6 @@ class NewsItem {
     required this.timestamp,
     required this.source,
     required this.url,
-    required this.aiSummary,
   });
 }
 
