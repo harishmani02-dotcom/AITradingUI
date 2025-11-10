@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import '../services/stock_api_service.dart';
 
@@ -363,52 +364,58 @@ class _MoversScreenState extends State<MoversScreen>
     }
   }
 
-  Widget _buildStockList() {
+  Widget _buildSliverStockList() {
     final stocks = _getCurrentList();
     
     if (stocks.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.inbox_outlined,
-              size: 64,
-              color: Colors.white24,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No data available',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.white54,
-                fontWeight: FontWeight.w500,
+      return SliverFillRemaining(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.inbox_outlined,
+                size: 64,
+                color: Colors.white24,
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Pull down to refresh',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.white38,
+              const SizedBox(height: 16),
+              const Text(
+                'No data available',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white54,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                'Pull down to refresh',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.white38,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: stocks.length,
-      separatorBuilder: (context, index) => const Divider(
-        color: Color(0xFF2D3748),
-        height: 1,
-        thickness: 1,
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) {
+          if (index.isOdd) {
+            return const Divider(
+              color: Color(0xFF2D3748),
+              height: 1,
+              thickness: 1,
+            );
+          }
+          final stockIndex = index ~/ 2;
+          return _buildStockItem(stocks[stockIndex]);
+        },
+        childCount: stocks.length * 2 - 1, // Account for dividers
       ),
-      itemBuilder: (context, index) {
-        return _buildStockItem(stocks[index]);
-      },
     );
   }
 
