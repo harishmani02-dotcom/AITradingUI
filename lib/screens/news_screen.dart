@@ -425,7 +425,7 @@ class _NewsScreenState extends State<NewsScreen> {
                                 ),
                               ),
                               Text(
-                                'Full Access Unlocked',
+                                'Curated coloection of Top trending News for the day',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -457,7 +457,7 @@ class _NewsScreenState extends State<NewsScreen> {
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
-                            'All Signals Unlocked',
+                            'Curated coloection of Top trending News for the day',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 14,
