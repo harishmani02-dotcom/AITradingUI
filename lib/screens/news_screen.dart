@@ -81,15 +81,15 @@ class _NewsScreenState extends State<NewsScreen> {
 
       for (var source in _rssSources) {
         try {
-          debugPrint('ðŸ“¡ Fetching from ${source.name}...');
+          debugPrint('📡 Fetching from ${source.name}...');
           final articles = await _fetchFromRSS(source);
           if (articles.isNotEmpty) {
             allArticles.addAll(articles);
             successCount++;
-            debugPrint('âœ… Got ${articles.length} articles from ${source.name}');
+            debugPrint('✅ Got ${articles.length} articles from ${source.name}');
           }
         } catch (e) {
-          debugPrint('âš ï¸ Failed to fetch from ${source.name}: $e');
+          debugPrint('⚠️ Failed to fetch from ${source.name}: $e');
         }
       }
 
@@ -113,9 +113,9 @@ class _NewsScreenState extends State<NewsScreen> {
         _errorMessage = '';
       });
 
-      debugPrint('âœ… Loaded ${articlesToShow.length} articles from $successCount sources');
+      debugPrint('✅ Loaded ${articlesToShow.length} articles from $successCount sources');
     } catch (e) {
-      debugPrint('âŒ Error loading news: $e');
+      debugPrint('❌ Error loading news: $e');
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
