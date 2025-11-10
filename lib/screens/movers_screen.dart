@@ -373,7 +373,7 @@ class _MoversScreenState extends State<MoversScreen>
                   ),
                 ),
                 Text(
-                  'â‚¹${mover.price.toStringAsFixed(2)}',
+                  '₹${mover.price.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
