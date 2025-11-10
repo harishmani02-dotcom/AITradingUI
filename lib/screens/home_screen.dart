@@ -308,7 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             )
           else
             Container(
-              margin: const EdgeInsets.only(right: 8),
+              margin: const EdgeInsets.only(right: 12),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
@@ -319,21 +319,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 onPressed: _handleRefresh,
               ),
             ),
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.notifications_rounded, color: Colors.white),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AlertsScreen()),
-                );
-              },
-            ),
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -365,7 +350,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           children: [
                             const SizedBox(height: 4),
                             
-                            // 1. AI TREND RADAR BANNER - Dynamic Market Sentiment for ALL users
+                            // 1. AI TREND RADAR BANNER
                             FutureBuilder<Map<String, dynamic>>(
                               future: _fetchMarketSentiment(),
                               builder: (context, snapshot) {
@@ -374,50 +359,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 
                                 final isBullish = sentiment == 'BULLISH';
                                 final isBearish = sentiment == 'BEARISH';
-                                final isNeutral = sentiment == 'NEUTRAL';
                                 
                                 Color primaryColor;
                                 Color secondaryColor;
                                 IconData sentimentIcon;
                                 String sentimentText;
                                 String sentimentEmoji;
-                                String subtitleText;
                                 
-                                // Determine colors and text based on market sentiment
                                 if (isBullish) {
                                   primaryColor = const Color(0xFF10B981);
                                   secondaryColor = const Color(0xFF059669);
                                   sentimentIcon = Icons.trending_up_rounded;
                                   sentimentEmoji = '📈';
                                   sentimentText = isPremium ? 'Premium - Bullish Market' : 'Market Bullish';
-                                  subtitleText = isPremium ? 'All Signals • ${score.toStringAsFixed(0)}% Bull' : 'Strong Buy Signals Today';
                                 } else if (isBearish) {
                                   primaryColor = const Color(0xFFEF4444);
                                   secondaryColor = const Color(0xFFDC2626);
                                   sentimentIcon = Icons.trending_down_rounded;
                                   sentimentEmoji = '📉';
                                   sentimentText = isPremium ? 'Premium - Bearish Market' : 'Market Bearish';
-                                  subtitleText = isPremium ? 'All Signals • ${score.toStringAsFixed(0)}% Bear' : 'Caution: Sell Pressure';
                                 } else {
                                   primaryColor = const Color(0xFF06B6D4);
                                   secondaryColor = const Color(0xFF0EA5E9);
                                   sentimentIcon = Icons.remove_rounded;
                                   sentimentEmoji = '➡️';
                                   sentimentText = isPremium ? 'Premium - Neutral Market' : 'Market Neutral';
-                                  subtitleText = isPremium ? 'All Signals • Mixed Signals' : 'Market Consolidating';
-                                }
-                                
-                                // Override with purple for premium if you want premium-specific styling
-                                // But keep showing market sentiment
-                                if (isPremium) {
-                                  // Keep market colors but add premium indicator
-                                  // Or use purple overlay
                                 }
                                 
                                 return GestureDetector(
                                   onTap: () {
-                                    // For premium: Go to AI Chat
-                                    // For non-premium: Show market details or go to AI Chat
                                     Navigator.of(context).push(
                                       MaterialPageRoute(builder: (_) => const AIChatScreen()),
                                     );
