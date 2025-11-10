@@ -86,223 +86,281 @@ class _MoversScreenState extends State<MoversScreen>
     }
   }
 
-  Color _getSignalColor(String signal) {
-    switch (signal) {
-      case 'Buy':
-        return const Color(0xFF10B981);
-      case 'Sell':
-        return const Color(0xFFEF4444);
+  Color _getHeaderColor() {
+    switch (_tabController.index) {
+      case 0:
+        return const Color(0xFF10B981); // Green for gainers
+      case 1:
+        return const Color(0xFFEF4444); // Red for losers
+      case 2:
+        return const Color(0xFF3B82F6); // Blue for volume
       default:
         return const Color(0xFF8B5CF6);
     }
   }
 
-  IconData _getSignalIcon(String signal) {
-    switch (signal) {
-      case 'Buy':
-        return Icons.arrow_upward;
-      case 'Sell':
-        return Icons.arrow_downward;
+  IconData _getHeaderIcon() {
+    switch (_tabController.index) {
+      case 0:
+        return Icons.trending_up;
+      case 1:
+        return Icons.trending_down;
+      case 2:
+        return Icons.bar_chart;
       default:
-        return Icons.horizontal_rule;
+        return Icons.show_chart;
+    }
+  }
+
+  String _getHeaderTitle() {
+    switch (_tabController.index) {
+      case 0:
+        return 'Top gainers';
+      case 1:
+        return 'Top losers';
+      case 2:
+        return 'Volume shockers';
+      default:
+        return '';
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A202C),
+      backgroundColor: const Color(0xFF0F1419),
       appBar: AppBar(
         title: const Text(
-          'Top Movers',
+          'Screeners',
           style: TextStyle(
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
             color: Colors.white,
-            fontSize: 24,
+            fontSize: 20,
           ),
         ),
-        backgroundColor: const Color(0xFF1A202C),
+        backgroundColor: const Color(0xFF1A1F28),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         actions: [
-          if (!_isLoading && _topGainers.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text(
-                    'Live',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+          IconButton(
+            icon: const Icon(Icons.search, color: Colors.white),
+            onPressed: () {},
+          ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF8B5CF6),
+          indicatorColor: const Color(0xFF3B82F6),
           indicatorWeight: 3,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white54,
+          labelColor: const Color(0xFF3B82F6),
+          unselectedLabelColor: Colors.white70,
           labelStyle: const TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
           unselectedLabelStyle: const TextStyle(
-            fontSize: 15,
+            fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
+          onTap: (index) {
+            setState(() {}); // Refresh to update header color
+          },
           tabs: const [
-            Tab(
-              icon: Icon(Icons.trending_up, size: 22),
-              text: 'Top Gainers',
-            ),
-            Tab(
-              icon: Icon(Icons.trending_down, size: 22),
-              text: 'Top Losers',
-            ),
-            Tab(
-              icon: Icon(Icons.volume_up, size: 22),
-              text: 'Volume Buzzers',
-            ),
+            Tab(text: 'Top gainers'),
+            Tab(text: 'Top losers'),
+            Tab(text: 'Volume shockers'),
           ],
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadData,
-        backgroundColor: const Color(0xFF2D3748),
-        color: const Color(0xFF8B5CF6),
-        child: Column(
-          children: [
-            // Info Banner
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              color: const Color(0xFF1A202C),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: Color(0xFF8B5CF6),
-                    size: 20,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _getInfoText(),
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ),
-                  if (_lastUpdated != null)
-                    Text(
-                      _getTimeAgo(_lastUpdated!),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: Colors.white54,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                ],
+      body: Column(
+        children: [
+          // Colored Header Section
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _getHeaderColor(),
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
               ),
             ),
-
-            // Error Message
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                color: const Color(0xFFEF4444).withOpacity(0.1),
-                child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(
-                          color: Color(0xFFEF4444),
-                          fontSize: 12,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getHeaderTitle(),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_getCurrentList().length} stocks',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      _getHeaderIcon(),
+                      color: Colors.white,
+                      size: 48,
                     ),
                   ],
                 ),
-              ),
+              ],
+            ),
+          ),
 
-            // Tab Content
-            Expanded(
-              child: Container(
-                color: const Color(0xFF1A202C),
-                child: _isLoading
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(
-                              color: Color(0xFF8B5CF6),
-                            ),
-                            SizedBox(height: 16),
-                            Text(
-                              'Analyzing 200 stocks...',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.white54,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildMoversList(_topGainers, true),
-                          _buildMoversList(_topLosers, false),
-                          _buildMoversList(_volumeBuzzers, null),
-                        ],
-                      ),
+          // Info Box
+          Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              _getInfoText(),
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Stock List Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: const Color(0xFF1A1F28),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Stock name',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
+                  ),
+                ),
+                Text(
+                  'Price',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Stock List
+          Expanded(
+            child: _isLoading
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          color: Color(0xFF8B5CF6),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Analyzing 200 stocks...',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.white54,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : RefreshIndicator(
+                    onRefresh: _loadData,
+                    backgroundColor: const Color(0xFF1A1F28),
+                    color: const Color(0xFF8B5CF6),
+                    child: _buildStockList(),
+                  ),
+          ),
+
+          // Subscribe Button
+          Container(
+            padding: const EdgeInsets.all(16),
+            color: const Color(0xFF0F1419),
+            child: SizedBox(
+              width: double.infinity,
+              height: 54,
+              child: ElevatedButton(
+                onPressed: () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF8C00),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'Subscribe to PRO',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  List<StockMover> _getCurrentList() {
+    switch (_tabController.index) {
+      case 0:
+        return _topGainers;
+      case 1:
+        return _topLosers;
+      case 2:
+        return _volumeBuzzers;
+      default:
+        return [];
+    }
   }
 
   String _getInfoText() {
     switch (_tabController.index) {
       case 0:
-        return 'Stocks with highest price gain today';
+        return 'Stocks which have gained the most today';
       case 1:
-        return 'Stocks with highest price decline today';
+        return 'Stocks which have lost the most today';
       case 2:
-        return 'Stocks with unusually high trading volume';
+        return 'Stocks where the trading volume is atleast 5 times more than the volume of the last trading day';
       default:
         return '';
     }
   }
 
-  String _getTimeAgo(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    return '${diff.inHours}h ago';
-  }
-
-  Widget _buildMoversList(List<StockMover> movers, bool? isGainer) {
-    if (movers.isEmpty) {
+  Widget _buildStockList() {
+    final stocks = _getCurrentList();
+    
+    if (stocks.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -333,179 +391,112 @@ class _MoversScreenState extends State<MoversScreen>
         ),
       );
     }
-    
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: movers.length,
+
+    return ListView.separated(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      itemCount: stocks.length,
+      separatorBuilder: (context, index) => const Divider(
+        color: Color(0xFF2D3748),
+        height: 1,
+        thickness: 1,
+      ),
       itemBuilder: (context, index) {
-        return _buildMoverCard(movers[index], index + 1);
+        return _buildStockItem(stocks[index]);
       },
     );
   }
 
-  Widget _buildMoverCard(StockMover mover, int rank) {
-    final signalColor = _getSignalColor(mover.signal);
-    
+  Widget _buildStockItem(StockMover stock) {
+    final isPositive = stock.changePercent > 0;
+    final changeColor = isPositive ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            signalColor.withOpacity(0.12),
-            signalColor.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: signalColor.withOpacity(0.4),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      color: const Color(0xFF0F1419),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Row(
         children: [
-          // Header Row - Symbol and Price
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                mover.symbol,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              Text(
-                '₹${mover.price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 14),
-          
-          // Signal Badge
+          // Stock Logo/Initial
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: signalColor.withOpacity(0.2),
+              color: const Color(0xFF2D3748),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: Center(
+              child: Text(
+                stock.symbol.substring(0, 1),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Stock Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  mover.signal.toUpperCase(),
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: signalColor,
-                    letterSpacing: 0.5,
+                  stock.symbol,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Icon(
-                  _getSignalIcon(mover.signal),
-                  size: 16,
-                  color: signalColor,
+                const SizedBox(height: 4),
+                Text(
+                  stock.name.length > 25 
+                      ? '${stock.name.substring(0, 25)}...' 
+                      : stock.name,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: Colors.white54,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          
-          const SizedBox(height: 18),
-          
-          // Confidence Bar
+
+          // Price and Change
           Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Confidence:',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.white60,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Text(
-                    '${(mover.changePercent.abs() * 10).clamp(0, 100).toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+              Text(
+                '₹${stock.price.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: LinearProgressIndicator(
-                  value: (mover.changePercent.abs() * 0.1).clamp(0, 1),
-                  backgroundColor: Colors.white.withOpacity(0.15),
-                  valueColor: AlwaysStoppedAnimation<Color>(signalColor),
-                  minHeight: 8,
+              const SizedBox(height: 4),
+              Text(
+                '${isPositive ? '+' : ''}${stock.changePercent.toStringAsFixed(2)}%',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: changeColor,
                 ),
               ),
             ],
           ),
-          
-          const SizedBox(height: 18),
-          
-          Divider(color: Colors.white.withOpacity(0.1), height: 1, thickness: 1),
-          
-          const SizedBox(height: 14),
-          
-          // Analysis Factors
-          const Text(
-            'Analysis Factors:',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white60,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'RSI: ${(50 + (mover.changePercent * 2)).clamp(0, 100).toStringAsFixed(1)}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Votes: ${_generateVotes(mover.signal)}',
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.white70,
-            ),
+
+          // Bookmark Icon
+          const SizedBox(width: 12),
+          const Icon(
+            Icons.bookmark_border,
+            color: Colors.white54,
+            size: 24,
           ),
         ],
       ),
     );
-  }
-  
-  String _generateVotes(String signal) {
-    // Generate mock votes based on signal
-    if (signal == 'Buy') {
-      return '4 Buy, 1 Sell, 0 Hold';
-    } else if (signal == 'Sell') {
-      return '2 Buy, 4 Sell, 0 Hold';
-    } else {
-      return '1 Buy, 1 Sell, 3 Hold';
-    }
   }
 }
