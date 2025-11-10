@@ -639,9 +639,10 @@ class _NewsScreenState extends State<NewsScreen> {
                       Text(
                         news.symbol,
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
+                          color: Color(0xFF3B82F6), // Bright blue color
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
                         ),
                       ),
                       const SizedBox(height: 2),
