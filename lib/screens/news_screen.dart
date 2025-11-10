@@ -1,7 +1,3 @@
-// ============================================
-// FILE: lib/screens/news_screen.dart
-// ============================================
-
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:http/http.dart' as http;
@@ -22,6 +18,10 @@ class _NewsScreenState extends State<NewsScreen> {
   bool _autoRefresh = true;
   Timer? _refreshTimer;
   DateTime _lastRefresh = DateTime.now();
+
+  // New State: Filtering
+  String _selectedSentimentFilter = 'All';
+  String _selectedCategoryFilter = 'All';
 
   List<NewsItem> _allNews = [];
   String _errorMessage = '';
@@ -45,11 +45,20 @@ class _NewsScreenState extends State<NewsScreen> {
     ),
   ];
 
+  final List<String> _sentimentFilters = ['All', 'Bullish', 'Bearish', 'Neutral'];
+  final List<String> _categoryFilters = ['All', 'My Watchlist', 'Market', 'Policy', 'Earnings'];
+  // We will map 'Market' to articles where symbol is 'MARKET'.
+
   @override
   void initState() {
     super.initState();
     _loadNews();
     _startAutoRefresh();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toUpperCase();
+      });
+    });
   }
 
   @override
@@ -167,6 +176,7 @@ class _NewsScreenState extends State<NewsScreen> {
             timestamp: pubDate,
             source: source.name,
             url: link,
+            aiSummary: 'This is an AI-generated summary for the article about $symbol from ${source.name}. The sentiment is $sentiment. (Mock Summary)', // Mock summary generation
           );
         }).toList();
       }
@@ -288,22 +298,160 @@ class _NewsScreenState extends State<NewsScreen> {
   }
 
   List<NewsItem> get _filteredNews {
-    if (_searchQuery.isEmpty) return _allNews;
-    return _allNews.where((news) =>
+    final filteredBySentiment = _allNews.where((news) {
+      if (_selectedSentimentFilter == 'All') return true;
+      return news.sentiment == _selectedSentimentFilter;
+    });
+
+    final filteredByCategory = filteredBySentiment.where((news) {
+      if (_selectedCategoryFilter == 'All') return true;
+      if (_selectedCategoryFilter == 'My Watchlist') {
+        // Mocking Watchlist filter logic
+        return ['TCS', 'INFY'].contains(news.symbol);
+      }
+      if (_selectedCategoryFilter == 'Market') {
+        return news.symbol == 'MARKET';
+      }
+      // Since RSS data doesn't provide explicit categories, we'll map source names
+      if (_selectedCategoryFilter == 'Policy' && (news.source.contains('Standard') || news.source.contains('Times'))) {
+        return true;
+      }
+      if (_selectedCategoryFilter == 'Earnings' && (news.title.contains('Q') || news.title.contains('Profit') || news.title.contains('Result'))) {
+        return true;
+      }
+      return false; 
+    });
+
+
+    if (_searchQuery.isEmpty) return filteredByCategory.toList();
+
+    return filteredByCategory.where((news) =>
       news.symbol.toUpperCase().contains(_searchQuery) ||
       news.title.toUpperCase().contains(_searchQuery) ||
       news.summary.toUpperCase().contains(_searchQuery)
     ).toList();
   }
 
+  // Helper method to build the filter chips
+  Widget _buildFilterChip(String label, String currentSelection, Function(String) onSelect) {
+    final isSelected = currentSelection == label;
+    return GestureDetector(
+      onTap: () => onSelect(label),
+      child: Container(
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF252B3B), // Highlight color for selection
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF3B82F6) : Colors.white.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : const Color(0xFF9CA3AF),
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Helper to show the AI Summary Dialog
+  void _showAiSummaryDialog(NewsItem news) {
+    final Color primaryColor = _getSentimentColor(news.sentiment);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1D2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.auto_awesome_rounded, color: Color(0xFF3B82F6), size: 24),
+              const SizedBox(width: 8),
+              Text(
+                'AI Summary: ${news.symbol}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                news.aiSummary,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.8),
+                  fontSize: 14,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Text(
+                    'Sentiment:',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.6),
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: primaryColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      news.sentiment,
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close', style: TextStyle(color: Color(0xFF3B82F6))),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _openUrl(news.url);
+              },
+              child: Text('Read Full Article', style: TextStyle(color: primaryColor)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Color _getSentimentColor(String sentiment) {
     switch (sentiment) {
       case 'Bullish':
-        return const Color(0xFF22C55E);
+        return const Color(0xFF22C55E); // Green
       case 'Bearish':
-        return const Color(0xFFEF4444);
+        return const Color(0xFFEF4444); // Red
       default:
-        return const Color(0xFF6B7280);
+        return const Color(0xFF9CA3AF); // Gray/Neutral
     }
   }
 
@@ -351,6 +499,7 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -363,7 +512,7 @@ class _NewsScreenState extends State<NewsScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'News',
+          'News Feed',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -496,34 +645,52 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
-
+            const SliverToBoxAdapter(child: SizedBox(height: 12)),
+            
+            // --- ENHANCEMENT 1: FILTERING CHIPS ---
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Stock name',
-                      style: TextStyle(
-                        color: Color(0xFF9CA3AF),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                      'Filter by Sentiment:',
+                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: _sentimentFilters.map((label) => _buildFilterChip(label, _selectedSentimentFilter, (value) {
+                          setState(() => _selectedSentimentFilter = value);
+                        })).toList(),
                       ),
                     ),
-                    const Spacer(),
-                    Text(
-                      'Sentiment',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Filter by Category:',
+                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 40,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: _categoryFilters.map((label) => _buildFilterChip(label, _selectedCategoryFilter, (value) {
+                          setState(() => _selectedCategoryFilter = value);
+                        })).toList(),
                       ),
                     ),
+                    const SizedBox(height: 8),
                   ],
                 ),
               ),
             ),
+            // --- END ENHANCEMENT 1 ---
+
+            // --- REMOVED THE OLD HEADER ROW ---
 
             _isLoading && _allNews.isEmpty
                 ? SliverFillRemaining(
@@ -596,71 +763,77 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
 
+  // --- ENHANCEMENT 2 & 3: VISUAL DENSITY and AI SUMMARY BUTTON ---
   Widget _buildNewsCard(NewsItem news) {
     final sentimentColor = _getSentimentColor(news.sentiment);
 
     return GestureDetector(
+      // Opens the full article link
       onTap: () => _openUrl(news.url),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        padding: const EdgeInsets.all(16),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: const Color(0xFF252B3B),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.5),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Row 1: Stock Symbol, Source, and Sentiment (Condensed Header)
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF374151),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: Text(
-                      news.symbol.substring(0, 1),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    // Stock Initial/Source Icon (Visual Density)
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: sentimentColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          news.symbol.substring(0, 1),
+                          style: TextStyle(
+                            color: sentimentColor,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        news.symbol,
-                        style: const TextStyle(
-                          color: Color(0xFF3B82F6), // Bright blue color
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.3,
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          news.symbol,
+                          style: const TextStyle(
+                            color: Color(0xFF3B82F6),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.3,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        news.source,
-                        style: const TextStyle(
-                          color: Color(0xFF6B7280),
-                          fontSize: 11,
+                        Text(
+                          news.source,
+                          style: const TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 11,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
+                
+                // Sentiment Tag
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: sentimentColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -675,7 +848,7 @@ class _NewsScreenState extends State<NewsScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        news.sentiment == 'Bullish' ? 'UP' : news.sentiment == 'Bearish' ? 'DOWN' : 'FLAT',
+                        news.sentiment.toUpperCase(),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -687,7 +860,10 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            
+            const SizedBox(height: 10),
+            
+            // Article Title and Summary (Core Content)
             Text(
               news.title,
               style: const TextStyle(
@@ -704,14 +880,18 @@ class _NewsScreenState extends State<NewsScreen> {
               news.summary,
               style: const TextStyle(
                 color: Color(0xFF9CA3AF),
-                fontSize: 13,
+                fontSize: 12,
                 height: 1.4,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const SizedBox(height: 12),
+
+            const SizedBox(height: 10),
+            
+            // Row 3: Time Ago & AI Summary Button
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   _getTimeAgo(news.timestamp),
@@ -720,12 +900,34 @@ class _NewsScreenState extends State<NewsScreen> {
                     fontSize: 11,
                   ),
                 ),
-                const Spacer(),
-                const Icon(
-                  Icons.arrow_forward,
-                  color: Color(0xFF6B7280),
-                  size: 16,
+                
+                // AI Summary Button (Enhancement 3)
+                GestureDetector(
+                  onTap: () => _showAiSummaryDialog(news),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF8B5CF6).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome_rounded, color: Color(0xFFA78BFA), size: 14),
+                        SizedBox(width: 4),
+                        Text(
+                          'AI Summary',
+                          style: TextStyle(
+                            color: Color(0xFFA78BFA),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
+                
               ],
             ),
           ],
@@ -733,7 +935,9 @@ class _NewsScreenState extends State<NewsScreen> {
       ),
     );
   }
+
 }
+
 
 class NewsItem {
   final String symbol;
@@ -743,6 +947,7 @@ class NewsItem {
   final DateTime timestamp;
   final String source;
   final String url;
+  final String aiSummary; // New field for AI Summary
 
   NewsItem({
     required this.symbol,
@@ -752,8 +957,10 @@ class NewsItem {
     required this.timestamp,
     required this.source,
     required this.url,
+    required this.aiSummary,
   });
 }
+
 
 class RSSSource {
   final String name;
