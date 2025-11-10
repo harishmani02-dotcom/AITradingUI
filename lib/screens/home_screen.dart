@@ -67,12 +67,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final user = Supabase.instance.client.auth.currentUser;
 
       if (user == null) {
-        debugPrint('âš ï¸ No authenticated user');
+        debugPrint('⚠️ No authenticated user');
         setState(() => _isRefreshingSubscription = false);
         return;
       }
 
-      debugPrint('ðŸ”„ Refreshing subscription status for user: ${user.id}');
+      debugPrint('🔄 Refreshing subscription status for user: ${user.id}');
 
       final response = await Supabase.instance.client
           .from('app_users')
@@ -84,9 +84,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         final isSubscribed = response['subscription_status'] ?? false;
         final subscriptionEnd = response['subscription_end'];
 
-        debugPrint('âœ… Subscription status loaded: $isSubscribed');
+        debugPrint('✅ Subscription status loaded: $isSubscribed');
         if (subscriptionEnd != null) {
-          debugPrint('ðŸ“… Subscription ends: $subscriptionEnd');
+          debugPrint('📅 Subscription ends: $subscriptionEnd');
         }
 
         await authProvider.refreshUserProfile();
@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _showPremiumWelcome();
         }
       } else {
-        debugPrint('ðŸ“ Creating user record in app_users...');
+        debugPrint('📝 Creating user record in app_users...');
         await Supabase.instance.client.from('app_users').insert({
           'user_id': user.id,
           'email': user.email,
@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         await authProvider.refreshUserProfile();
       }
     } catch (e) {
-      debugPrint('âŒ Error refreshing subscription: $e');
+      debugPrint('❌ Error refreshing subscription: $e');
     } finally {
       if (mounted) {
         setState(() => _isRefreshingSubscription = false);
@@ -133,7 +133,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const SizedBox(width: 12),
             const Expanded(
               child: Text(
-                'Welcome back, Premium fam! âœ¨',
+                'Welcome back, Premium fam! ✨',
                 style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
               ),
             ),
@@ -154,11 +154,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     final isPremium = authProvider.userProfile?.isSubscriptionActive ?? false;
     
-    debugPrint('ðŸ“Š Loading signals (Premium: $isPremium)');
+    debugPrint('📊 Loading signals (Premium: $isPremium)');
     
     await signalsProvider.fetchTodaySignals(isPremium: isPremium);
     
-    debugPrint('âœ… Signals loaded: ${signalsProvider.signals.length}');
+    debugPrint('✅ Signals loaded: ${signalsProvider.signals.length}');
   }
 
   Future<Map<String, dynamic>> _fetchMarketSentiment() async {
@@ -178,7 +178,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         };
       }
     } catch (e) {
-      debugPrint('âŒ Error fetching market sentiment: $e');
+      debugPrint('❌ Error fetching market sentiment: $e');
     }
     
     return {
@@ -365,100 +365,193 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           children: [
                             const SizedBox(height: 4),
                             
-                            // 1. AI TREND RADAR BANNER
-                            GestureDetector(
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(builder: (_) => const AIChatScreen()),
-                                );
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: isPremium
-                                        ? [
-                                            const Color(0xFF8B5CF6).withOpacity(0.9),
-                                            const Color(0xFF7C3AED).withOpacity(0.8),
-                                          ]
-                                        : [
-                                            const Color(0xFF06B6D4).withOpacity(0.9),
-                                            const Color(0xFF0EA5E9).withOpacity(0.8),
-                                          ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: (isPremium ? const Color(0xFF8B5CF6) : const Color(0xFF06B6D4))
-                                          .withOpacity(0.25),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    AnimatedBuilder(
-                                      animation: _pulseController,
-                                      builder: (context, child) {
-                                        return Container(
-                                          padding: const EdgeInsets.all(6),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withOpacity(0.2 + (_pulseController.value * 0.1)),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: Icon(
-                                            isPremium ? Icons.diamond_rounded : Icons.auto_awesome_rounded,
-                                            color: Colors.white,
-                                            size: 16,
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            isPremium ? 'âœ¨ Premium Vibes' : 'ðŸš€ AI Trend Radar',
-                                            style: const TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.white70,
-                                              letterSpacing: 0.2,
-                                            ),
-                                          ),
-                                          Text(
-                                            isPremium ? 'Full Access Unlocked' : 'Chat with AI, Get Insights',
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w800,
-                                              color: Colors.white,
-                                              letterSpacing: -0.3,
-                                            ),
-                                          ),
+                            // 1. AI TREND RADAR BANNER - Dynamic Market Sentiment for ALL users
+                            FutureBuilder<Map<String, dynamic>>(
+                              future: _fetchMarketSentiment(),
+                              builder: (context, snapshot) {
+                                final sentiment = snapshot.data?['sentiment'] ?? 'NEUTRAL';
+                                final score = snapshot.data?['score'] ?? 50.0;
+                                
+                                final isBullish = sentiment == 'BULLISH';
+                                final isBearish = sentiment == 'BEARISH';
+                                final isNeutral = sentiment == 'NEUTRAL';
+                                
+                                Color primaryColor;
+                                Color secondaryColor;
+                                IconData sentimentIcon;
+                                String sentimentText;
+                                String sentimentEmoji;
+                                String subtitleText;
+                                
+                                // Determine colors and text based on market sentiment
+                                if (isBullish) {
+                                  primaryColor = const Color(0xFF10B981);
+                                  secondaryColor = const Color(0xFF059669);
+                                  sentimentIcon = Icons.trending_up_rounded;
+                                  sentimentEmoji = '📈';
+                                  sentimentText = isPremium ? 'Premium - Bullish Market' : 'Market Bullish';
+                                  subtitleText = isPremium ? 'All Signals • ${score.toStringAsFixed(0)}% Bull' : 'Strong Buy Signals Today';
+                                } else if (isBearish) {
+                                  primaryColor = const Color(0xFFEF4444);
+                                  secondaryColor = const Color(0xFFDC2626);
+                                  sentimentIcon = Icons.trending_down_rounded;
+                                  sentimentEmoji = '📉';
+                                  sentimentText = isPremium ? 'Premium - Bearish Market' : 'Market Bearish';
+                                  subtitleText = isPremium ? 'All Signals • ${score.toStringAsFixed(0)}% Bear' : 'Caution: Sell Pressure';
+                                } else {
+                                  primaryColor = const Color(0xFF06B6D4);
+                                  secondaryColor = const Color(0xFF0EA5E9);
+                                  sentimentIcon = Icons.remove_rounded;
+                                  sentimentEmoji = '➡️';
+                                  sentimentText = isPremium ? 'Premium - Neutral Market' : 'Market Neutral';
+                                  subtitleText = isPremium ? 'All Signals • Mixed Signals' : 'Market Consolidating';
+                                }
+                                
+                                // Override with purple for premium if you want premium-specific styling
+                                // But keep showing market sentiment
+                                if (isPremium) {
+                                  // Keep market colors but add premium indicator
+                                  // Or use purple overlay
+                                }
+                                
+                                return GestureDetector(
+                                  onTap: () {
+                                    // For premium: Go to AI Chat
+                                    // For non-premium: Show market details or go to AI Chat
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(builder: (_) => const AIChatScreen()),
+                                    );
+                                  },
+                                  child: Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          primaryColor.withOpacity(0.9),
+                                          secondaryColor.withOpacity(0.8),
                                         ],
                                       ),
+                                      borderRadius: BorderRadius.circular(12),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: primaryColor.withOpacity(0.25),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
                                     ),
-                                    Container(
-                                      padding: const EdgeInsets.all(5),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
-                                        borderRadius: BorderRadius.circular(6),
-                                      ),
-                                      child: const Icon(
-                                        Icons.arrow_forward_rounded,
-                                        color: Colors.white,
-                                        size: 14,
-                                      ),
+                                    child: Row(
+                                      children: [
+                                        AnimatedBuilder(
+                                          animation: _pulseController,
+                                          builder: (context, child) {
+                                            return Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withOpacity(0.2 + (_pulseController.value * 0.1)),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Icon(
+                                                sentimentIcon,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Text(
+                                                    '$sentimentEmoji AI Trend Radar',
+                                                    style: const TextStyle(
+                                                      fontSize: 9,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: Colors.white70,
+                                                      letterSpacing: 0.2,
+                                                    ),
+                                                  ),
+                                                  if (isPremium) ...[
+                                                    const SizedBox(width: 4),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(0xFF8B5CF6),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: const Text(
+                                                        'PRO',
+                                                        style: TextStyle(
+                                                          fontSize: 7,
+                                                          fontWeight: FontWeight.w900,
+                                                          color: Colors.white,
+                                                          letterSpacing: 0.3,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                              Row(
+                                                children: [
+                                                  Flexible(
+                                                    child: Text(
+                                                      sentimentText,
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        fontWeight: FontWeight.w800,
+                                                        color: Colors.white,
+                                                        letterSpacing: -0.3,
+                                                      ),
+                                                      overflow: TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 6),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white.withOpacity(0.25),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Text(
+                                                      '${score.toStringAsFixed(0)}%',
+                                                      style: const TextStyle(
+                                                        fontSize: 9,
+                                                        fontWeight: FontWeight.w900,
+                                                        color: Colors.white,
+                                                        letterSpacing: -0.2,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: const Icon(
+                                            Icons.arrow_forward_rounded,
+                                            color: Colors.white,
+                                            size: 14,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
+                                  ),
+                                );
+                              },
                             ),
 
                             // 2. UPGRADE BANNER
@@ -542,7 +635,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                       ),
                                       child: const Text(
-                                        'â‚¹499/mo',
+                                        '₹499/mo',
                                         style: TextStyle(
                                           fontWeight: FontWeight.w900,
                                           fontSize: 10,
