@@ -299,11 +299,11 @@ class _NewsScreenState extends State<NewsScreen> {
   Color _getSentimentColor(String sentiment) {
     switch (sentiment) {
       case 'Bullish':
-        return const Color(0xFF22C55E); // Green
+        return const Color(0xFF22C55E);
       case 'Bearish':
-        return const Color(0xFFEF4444); // Red
+        return const Color(0xFFEF4444);
       default:
-        return const Color(0xFF6B7280); // Gray
+        return const Color(0xFF6B7280);
     }
   }
 
@@ -354,7 +354,7 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1D2E), // Dark background like screeners
+      backgroundColor: const Color(0xFF1A1D2E),
       appBar: AppBar(
         backgroundColor: const Color(0xFF1A1D2E),
         elevation: 0,
@@ -383,7 +383,6 @@ class _NewsScreenState extends State<NewsScreen> {
         color: Colors.white,
         child: CustomScrollView(
           slivers: [
-            // Header Section
             SliverToBoxAdapter(
               child: Container(
                 margin: const EdgeInsets.all(16),
@@ -448,7 +447,6 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
             ),
 
-            // Search Bar
             SliverToBoxAdapter(
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -500,7 +498,6 @@ class _NewsScreenState extends State<NewsScreen> {
 
             const SliverToBoxAdapter(child: SizedBox(height: 8)),
 
-            // News List Header
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -528,7 +525,6 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
             ),
 
-            // News List
             _isLoading && _allNews.isEmpty
                 ? SliverFillRemaining(
                     child: Center(
@@ -613,4 +609,157 @@ class _NewsScreenState extends State<NewsScreen> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlign
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF374151),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: Text(
+                      news.symbol.substring(0, 1),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        news.symbol,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        news.source,
+                        style: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: sentimentColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _getSentimentIcon(news.sentiment),
+                        color: sentimentColor,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        news.sentiment == 'Bullish' ? 'UP' : news.sentiment == 'Bearish' ? 'DOWN' : 'FLAT',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: sentimentColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              news.title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                height: 1.3,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              news.summary,
+              style: const TextStyle(
+                color: Color(0xFF9CA3AF),
+                fontSize: 13,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text(
+                  _getTimeAgo(news.timestamp),
+                  style: const TextStyle(
+                    color: Color(0xFF6B7280),
+                    fontSize: 11,
+                  ),
+                ),
+                const Spacer(),
+                const Icon(
+                  Icons.arrow_forward,
+                  color: Color(0xFF6B7280),
+                  size: 16,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class NewsItem {
+  final String symbol;
+  final String title;
+  final String summary;
+  final String sentiment;
+  final DateTime timestamp;
+  final String source;
+  final String url;
+
+  NewsItem({
+    required this.symbol,
+    required this.title,
+    required this.summary,
+    required this.sentiment,
+    required this.timestamp,
+    required this.source,
+    required this.url,
+  });
+}
+
+class RSSSource {
+  final String name;
+  final String url;
+
+  RSSSource({
+    required this.name,
+    required this.url,
+  });
+}
