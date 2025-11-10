@@ -1,5 +1,5 @@
 // ============================================
-// FILE 2: lib/screens/news_screen.dart
+// FILE: lib/screens/news_screen.dart
 // ============================================
 
 import 'package:flutter/material.dart';
@@ -26,7 +26,6 @@ class _NewsScreenState extends State<NewsScreen> {
   List<NewsItem> _allNews = [];
   String _errorMessage = '';
 
-  // Multiple RSS feed sources for Indian stock market
   final List<RSSSource> _rssSources = [
     RSSSource(
       name: 'Moneycontrol',
@@ -94,7 +93,7 @@ class _NewsScreenState extends State<NewsScreen> {
       }
 
       if (allArticles.isEmpty) {
-        throw Exception('Could not fetch news from any source. Please check your internet connection.');
+        throw Exception('Could not fetch news. Please check your internet connection.');
       }
 
       allArticles.sort((a, b) => b.timestamp.compareTo(a.timestamp));
@@ -300,11 +299,11 @@ class _NewsScreenState extends State<NewsScreen> {
   Color _getSentimentColor(String sentiment) {
     switch (sentiment) {
       case 'Bullish':
-        return const Color(0xFF10B981);
+        return const Color(0xFF22C55E); // Green
       case 'Bearish':
-        return const Color(0xFFEF4444);
+        return const Color(0xFFEF4444); // Red
       default:
-        return const Color(0xFF8B5CF6);
+        return const Color(0xFF6B7280); // Gray
     }
   }
 
@@ -355,12 +354,16 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1F2937),
+      backgroundColor: const Color(0xFF1A1D2E), // Dark background like screeners
       appBar: AppBar(
-        backgroundColor: const Color(0xFF1F2937),
+        backgroundColor: const Color(0xFF1A1D2E),
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
-          'Market News',
+          'News',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.white,
@@ -369,19 +372,7 @@ class _NewsScreenState extends State<NewsScreen> {
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              _autoRefresh ? Icons.autorenew : Icons.refresh,
-              color: const Color(0xFFA78BFA),
-            ),
-            onPressed: () {
-              setState(() {
-                _autoRefresh = !_autoRefresh;
-              });
-              _startAutoRefresh();
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFFA78BFA)),
+            icon: const Icon(Icons.refresh, color: Colors.white),
             onPressed: _isLoading ? null : _loadNews,
           ),
         ],
@@ -389,43 +380,50 @@ class _NewsScreenState extends State<NewsScreen> {
       body: RefreshIndicator(
         onRefresh: _loadNews,
         backgroundColor: const Color(0xFF2D3748),
-        color: const Color(0xFFA78BFA),
-        child: Column(
-          children: [
-            // Status Bar with Premium Banner
-            Container(
-              margin: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Premium Banner
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF8B5CF6), Color(0xFFD946EF)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
+        color: Colors.white,
+        child: CustomScrollView(
+          slivers: [
+            // Header Section
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF252B3B),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        const Icon(Icons.diamond, color: Colors.white, size: 24),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B4252),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: Color(0xFFFFD700),
+                            size: 24,
+                          ),
+                        ),
                         const SizedBox(width: 12),
                         const Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Premium Vibes',
+                                'Curated collection of top economic',
                                 style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
                               Text(
-                                'Curated coloection of Top trending News for the day',
+                                'news for the day ✨',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: 16,
@@ -435,119 +433,114 @@ class _NewsScreenState extends State<NewsScreen> {
                             ],
                           ),
                         ),
-                        const Icon(Icons.arrow_forward, color: Colors.white),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  // Status Info
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2D3748),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF4B5563),
-                        width: 1,
+                    const SizedBox(height: 12),
+                    Text(
+                      '${_allNews.length} articles • Updated ${_getTimeAgo(_lastRefresh)}',
+                      style: const TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 12,
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.verified, color: Color(0xFFA78BFA), size: 20),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Curated coloection of Top trending News for the day',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          '${_getTimeAgo(_lastRefresh)}',
-                          style: const TextStyle(
-                            color: Color(0xFF9CA3AF),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
 
             // Search Bar
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2D3748),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFF4B5563),
-                  width: 1,
+            SliverToBoxAdapter(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF252B3B),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value.toUpperCase();
-                  });
-                },
-                style: const TextStyle(color: Colors.white),
-                decoration: InputDecoration(
-                  hintText: 'Search stocks...',
-                  hintStyle: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 14,
-                  ),
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear, color: Color(0xFF9CA3AF)),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _searchQuery = '');
-                          },
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: const Color(0xFF2D3748),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value.toUpperCase();
+                    });
+                  },
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Search by stock or keyword...',
+                    hintStyle: const TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 14,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: Color(0xFF9CA3AF),
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, color: Color(0xFF9CA3AF)),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFF252B3B),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                   ),
                 ),
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+
+            // News List Header
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Stock name',
+                      style: TextStyle(
+                        color: Color(0xFF9CA3AF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Sentiment',
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
             // News List
-            Expanded(
-              child: _isLoading && _allNews.isEmpty
-                  ? Center(
+            _isLoading && _allNews.isEmpty
+                ? SliverFillRemaining(
+                    child: Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFFA78BFA),
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            'Fetching latest market news...',
+                            'Loading news...',
                             style: TextStyle(
                               color: Colors.grey[400],
                               fontSize: 14,
@@ -555,9 +548,11 @@ class _NewsScreenState extends State<NewsScreen> {
                           ),
                         ],
                       ),
-                    )
-                  : _filteredNews.isEmpty
-                      ? Center(
+                    ),
+                  )
+                : _filteredNews.isEmpty
+                    ? SliverFillRemaining(
+                        child: Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -577,57 +572,28 @@ class _NewsScreenState extends State<NewsScreen> {
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
-                              if (_errorMessage.isNotEmpty) ...[
-                                const SizedBox(height: 8),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                                  child: Text(
-                                    _errorMessage,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.redAccent,
-                                    ),
-                                  ),
-                                ),
-                              ],
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
                                 onPressed: _loadNews,
                                 icon: const Icon(Icons.refresh),
                                 label: const Text('Refresh News'),
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFA78BFA),
+                                  backgroundColor: const Color(0xFF3B82F6),
                                   foregroundColor: Colors.white,
                                 ),
                               ),
                             ],
                           ),
-                        )
-                      : Stack(
-                          children: [
-                            ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 20, left: 16, right: 16),
-                              itemCount: _filteredNews.length,
-                              itemBuilder: (context, index) {
-                                return _buildNewsCard(_filteredNews[index]);
-                              },
-                            ),
-                            if (_isLoading)
-                              const Positioned(
-                                top: 0,
-                                left: 0,
-                                right: 0,
-                                child: LinearProgressIndicator(
-                                  backgroundColor: Colors.transparent,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Color(0xFFA78BFA),
-                                  ),
-                                ),
-                              ),
-                          ],
                         ),
-            ),
+                      )
+                    : SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return _buildNewsCard(_filteredNews[index]);
+                          },
+                          childCount: _filteredNews.length,
+                        ),
+                      ),
           ],
         ),
       ),
@@ -636,197 +602,15 @@ class _NewsScreenState extends State<NewsScreen> {
 
   Widget _buildNewsCard(NewsItem news) {
     final sentimentColor = _getSentimentColor(news.sentiment);
-    final isBearish = news.sentiment == 'Bearish';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2D3748),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isBearish ? Colors.red[900]! : Colors.green[900]!,
-          width: 2,
+    return GestureDetector(
+      onTap: () => _openUrl(news.url),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252B3B),
+          borderRadius: BorderRadius.circular(12),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: sentimentColor.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header with Symbol and Sentiment
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: sentimentColor.withOpacity(0.15),
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                topRight: Radius.circular(12),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFA78BFA),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    news.symbol,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Icon(
-                  _getSentimentIcon(news.sentiment),
-                  color: sentimentColor,
-                  size: 20,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  news.sentiment,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: sentimentColor,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  _getTimeAgo(news.timestamp),
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF9CA3AF),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  news.title,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  news.summary,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[400],
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.source,
-                      size: 13,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        news.source,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey[500],
-                          fontStyle: FontStyle.italic,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => _openUrl(news.url),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFA78BFA).withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.open_in_new, size: 12, color: Color(0xFFA78BFA)),
-                            SizedBox(width: 4),
-                            Text(
-                              'Read',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFFA78BFA),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class NewsItem {
-  final String symbol;
-  final String title;
-  final String summary;
-  final String sentiment;
-  final DateTime timestamp;
-  final String source;
-  final String url;
-
-  NewsItem({
-    required this.symbol,
-    required this.title,
-    required this.summary,
-    required this.sentiment,
-    required this.timestamp,
-    required this.source,
-    required this.url,
-  });
-}
-
-class RSSSource {
-  final String name;
-  final String url;
-
-  RSSSource({
-    required this.name,
-    required this.url,
-  });
-}
+        child: Column(
+          crossAxisAlignment: CrossAxisAlign
