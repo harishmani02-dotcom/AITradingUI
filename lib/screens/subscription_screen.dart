@@ -209,13 +209,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                     const SizedBox(height: 20),
                     _buildFeatureItem('All Signals Unlocked', Icons.verified),
-                    _buildFeatureItem('Daily AI signals for 20+ stocks', Icons.trending_up),
+                    _buildFeatureItem('Daily AI signals for 2000+ stocks', Icons.trending_up),
                     _buildFeatureItem('5-method technical analysis', Icons.analytics),
                     _buildFeatureItem('Buy/Sell confidence scores', Icons.star),
-                    _buildFeatureItem('RSI, MACD, Bollinger analysis', Icons.show_chart),
+                    _buildFeatureItem('RSI, MACD, Average True Range (ATR), Exponential Moving Averages, Bollinger analysis', Icons.show_chart),
                     _buildFeatureItem('Volume & pattern recognition', Icons.insights),
                     _buildFeatureItem('Historical accuracy tracking', Icons.history),
-                    _buildFeatureItem('Updates daily at 6 PM IST', Icons.schedule),
+                    _buildFeatureItem('Updates daily at Every 15 minutes refresh', Icons.schedule),
                   ],
                 ),
               ),
@@ -413,3 +413,4 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   }
 }
          
+
