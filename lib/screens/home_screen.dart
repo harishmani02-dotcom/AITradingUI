@@ -660,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         ),
                                         const SizedBox(width: 3),
                                         Text(
-                                          '6 PM IST',
+                                          'Every 15 minutes refresh',
                                           style: TextStyle(
                                             fontSize: 9,
                                             color: Colors.white.withOpacity(0.8),
@@ -981,7 +981,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 8),
           Text(
-            isSearching ? 'Try a different stock symbol' : 'Signals update daily at 6 PM IST',
+            isSearching ? 'Try a different stock symbol' : 'Signals update daily at Every 15 minutes refresh',
             style: TextStyle(
               fontSize: 14,
               color: Colors.white.withOpacity(0.5),
@@ -1037,4 +1037,5 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
+
 
