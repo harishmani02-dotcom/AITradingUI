@@ -1,68 +1,79 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AIService {
-  // NOTE: Updated with the latest key provided by the user (November 2025).
-  static const String _groqApiKey = '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';
-  static const String _groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  static const String _groqModel = 'mixtral-8x7b-32768';
+  static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  
+  // Get API key from .env file
+  static String get _apiKey => dotenv.env['GROQ_API_KEY'] ?? '';
 
-  // We are storing a history of messages here for context.
-  static final List<Map<String, String>> _chatHistory = [
-    {
-      "role": "system",
-      "content": "You are a professional and extremely fast AI Market Strategist and financial assistant. Provide concise, expert answers about stock market concepts, analysis, and trading strategies. Keep responses brief and relevant to the user's question."
-    }
-  ];
+  // System prompt to make AI act as a trading assistant
+  static const String _systemPrompt = '''You are an expert Indian stock market trading assistant with deep knowledge of:
+- NSE and BSE stocks
+- Technical analysis (RSI, MACD, Moving Averages, Support/Resistance)
+- Fundamental analysis
+- Market trends and sentiment
+- Indian stock market regulations
 
-  static Future<String> getAIResponse(String userQuery) async {
-    // 1. Add the new user query to the history
-    _chatHistory.add({
-      "role": "user",
-      "content": userQuery,
-    });
+Provide clear, concise, and actionable insights. Use emojis appropriately. 
+When discussing stocks, mention current price levels, support/resistance, and trends.
+Always remind users to do their own research and that this is not financial advice.
+Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks like TCS, RELIANCE, INFY, HDFC, etc.)''';
 
-    final payload = {
-      "model": _groqModel,
-      "messages": _chatHistory,
-      "temperature": 0.7,
-      "max_tokens": 1000,
-    };
-
+  /// Send message to AI and get response
+  static Future<String> getAIResponse(String userMessage) async {
     try {
+      // Validate API key
+      if (_apiKey.isEmpty || _apiKey == 'your_groq_api_key_here') {
+        return '⚠️ API key not configured!\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a FREE API key\n3. Add it to your .env file:\nGROQ_API_KEY=gsk_your_key_here';
+      }
+
       final response = await http.post(
-        Uri.parse(_groqApiUrl),
+        Uri.parse(_baseUrl),
         headers: {
-          'Authorization': 'Bearer $_groqApiKey',
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
         },
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 15));
+        body: jsonEncode({
+          'model': 'llama-3.3-70b-versatile', // UPDATED MODEL - Currently supported
+          'messages': [
+            {
+              'role': 'system',
+              'content': _systemPrompt,
+            },
+            {
+              'role': 'user',
+              'content': userMessage,
+            }
+          ],
+          'temperature': 0.7,
+          'max_tokens': 1024,
+          'top_p': 1,
+          'stream': false,
+        }),
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final aiResponseText = data['choices'][0]['message']['content'] as String;
-        
-        // 2. Add the AI response to the history for context in future messages
-        _chatHistory.add({
-          "role": "assistant",
-          "content": aiResponseText,
-        });
-
-        return aiResponseText;
+        final aiMessage = data['choices'][0]['message']['content'];
+        return aiMessage.trim();
       } else if (response.statusCode == 401) {
-        // Specific handling for Invalid API Key (401 Unauthorized)
-        return "⚠️ **API Key Invalid/Expired.** Please ensure the Groq API key is correct in `lib/services/ai_service.dart`. Status 401: Unauthorized.";
-      } 
-      else {
-        // General API error handling
+        return '🔑 Invalid API key!\n\nYour API key is incorrect.\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a new API key\n3. Update your .env file:\nGROQ_API_KEY=gsk_your_new_key';
+      } else if (response.statusCode == 400) {
         final errorData = jsonDecode(response.body);
-        final errorMessage = errorData['error']['message'] ?? 'API Error ${response.statusCode}';
-        return "❌ Groq API Error: $errorMessage";
+        final errorMessage = errorData['error']?['message'] ?? 'Bad request';
+        return '❌ API Error 400:\n$errorMessage\n\nPlease check:\n1. API key is correct\n2. Model name is valid\n3. Request format is correct';
+      } else if (response.statusCode == 429) {
+        return '⏳ Rate limit exceeded!\n\nToo many requests. Please wait a moment and try again.';
+      } else {
+        return '❌ Error ${response.statusCode}\n\nResponse: ${response.body}\n\nPlease try again or contact support.';
       }
     } catch (e) {
-      // Network or processing error
-      return "❌ Network or processing error. Check your internet connection or Groq service status.";
+      if (e.toString().contains('SocketException') || e.toString().contains('HandshakeException')) {
+        return '📡 No internet connection.\n\nPlease check:\n1. WiFi/Mobile data is ON\n2. Internet is working\n3. Try again';
+      }
+      return '❌ Unexpected Error:\n${e.toString()}\n\nPlease try again.';
     }
   }
 }
