@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webfeed/webfeed.dart';
+// 1. ADD DOTENV IMPORT
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -25,11 +27,11 @@ class _NewsScreenState extends State<NewsScreen> {
   List<NewsItem> _allNews = [];
   String _errorMessage = '';
 
-  // --- Gemini API Configuration ---
-  final String _apiKey = ""; 
-  final String _apiUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
-  // --------------------------------
+  // --- Groq API Configuration (Updated to use environment variables) ---
+  // The key will be loaded in _fetchAiSummary
+  final String _groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  final String _groqModel = 'mixtral-8x7b-32768';
+  // -------------------------------------------------------------------
 
   final List<RSSSource> _rssSources = [
     RSSSource(
@@ -53,6 +55,11 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   void initState() {
     super.initState();
+    // Ensure dotenv is loaded before calling _loadNews if the key is mandatory
+    if (dotenv.env.isEmpty) {
+      // In a real app, you'd handle this load, but for now we trust it's loaded in main.
+      debugPrint('⚠️ Dotenv not loaded. API key reliance might fail.');
+    }
     _loadNews();
     _startAutoRefresh();
   }
@@ -185,30 +192,33 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
-  // --- NEW: AI Summary Fetcher with Exponential Backoff ---
+  // --- UPDATED: AI Summary Fetcher using Groq and Dotenv ---
   Future<String> _fetchAiSummary(String content) async {
-    if (_apiKey.isEmpty) {
+    final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
+
+    if (apiKey.isEmpty) {
       return "⚠️ API Key missing. Cannot generate summary.";
     }
 
     final systemInstruction =
-        "You are a concise financial news summarizer. Analyze the provided news content and generate a single, professional paragraph (max 40 words) focusing only on the key event and its predicted market impact (Bullish, Bearish, or Neutral). Do not include introductory phrases like 'This article states' or mention the source.";
+        "You are a concise financial news summarizer. Analyze the provided news content and generate a single, professional paragraph (max 40 words) focusing only on the key event and its predicted market impact (Bullish, Bearish, or Neutral). Do not include introductory phrases like 'This article states' or mention the source. Use the mixtral-8x7b-32768 model.";
 
     final userQuery = "Summarize the following financial news: $content";
 
     final payload = {
-      'contents': [
+      'model': _groqModel,
+      'messages': [
         {
-          'parts': [
-            {'text': userQuery}
-          ]
-        }
+          'role': 'system',
+          'content': systemInstruction,
+        },
+        {
+          'role': 'user',
+          'content': userQuery,
+        },
       ],
-      'systemInstruction': {
-        'parts': [
-          {'text': systemInstruction}
-        ]
-      },
+      'temperature': 0.1,
+      'max_tokens': 150,
     };
 
     const maxRetries = 3;
@@ -218,21 +228,28 @@ class _NewsScreenState extends State<NewsScreen> {
       try {
         final response = await http
             .post(
-              Uri.parse('$_apiUrl$_apiKey'),
-              headers: {'Content-Type': 'application/json'},
+              Uri.parse(_groqApiUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $apiKey', // Using Groq authentication
+              },
               body: json.encode(payload),
             )
             .timeout(const Duration(seconds: 20));
 
         if (response.statusCode == 200) {
           final result = json.decode(response.body);
-          final text = result['candidates']?[0]['content']?['parts']?[0]?['text'];
+          final text = result['choices']?[0]['message']?['content'];
           if (text != null && text.isNotEmpty) {
             return text;
           }
         }
         
-        // If status is non-200 or response structure is bad, proceed to retry/fail
+        // Handle 401 Unauthorized error specifically
+        if (response.statusCode == 401) {
+          return "❌ Invalid API Key. Please check the GROQ_API_KEY in your .env file.";
+        }
+
         debugPrint('AI API failed on attempt ${attempt + 1}: Status ${response.statusCode}');
 
       } on TimeoutException {
@@ -473,7 +490,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   ),
                 ],
               );
-            } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.startsWith('❌')) {
+            } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.startsWith('❌') || snapshot.data!.contains('API Key missing')) {
               summaryText = snapshot.data ?? 'An unknown error occurred.';
               contentWidget = Column(
                 children: [
@@ -481,9 +498,14 @@ class _NewsScreenState extends State<NewsScreen> {
                   const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 40),
                   const SizedBox(height: 16),
                   Text(
-                    summaryText,
+                    summaryText.contains('API Key missing')
+                        ? 'API Key missing. Check your .env file.'
+                        : summaryText,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Color(0xFFEF4444), fontSize: 14),
+                    style: TextStyle(
+                      color: summaryText.contains('API Key missing') ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               );
@@ -534,7 +556,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   contentWidget,
-                  if (!isLoading && !summaryText.startsWith('❌')) ...[
+                  if (!isLoading && !summaryText.startsWith('❌') && !summaryText.contains('API Key missing')) ...[
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1067,4 +1089,3 @@ class RSSSource {
     required this.url,
   });
 }
- 
