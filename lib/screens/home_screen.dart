@@ -381,7 +381,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 return GestureDetector(
                                   onTap: () {
                                     Navigator.of(context).push(
-                                      MaterialPageRoute(builder: (_) => const AIChatScreen()),
+                                      MaterialPageRoute(builder: (_) => AIChatScreen()),
                                     );
                                   },
                                   child: Container(
@@ -861,7 +861,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         child: FloatingActionButton(
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AIChatScreen()),
+              MaterialPageRoute(builder: (_) => AIChatScreen()),
             );
           },
           backgroundColor: Colors.transparent,
@@ -1037,3 +1037,4 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 }
+
