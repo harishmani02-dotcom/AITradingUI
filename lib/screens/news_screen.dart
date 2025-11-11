@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webfeed/webfeed.dart';
-// 1. ADD DOTENV IMPORT
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class NewsScreen extends StatefulWidget {
@@ -27,10 +26,10 @@ class _NewsScreenState extends State<NewsScreen> {
   List<NewsItem> _allNews = [];
   String _errorMessage = '';
 
-  // --- Groq API Configuration (Updated to use environment variables) ---
-  // The key will be loaded in _fetchAiSummary
+  // --- Groq API Configuration (Updated for Speed and Stability) ---
   final String _groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  final String _groqModel = 'mixtral-8x7b-32768';
+  // Switched to a faster model to prevent timeouts
+  final String _groqModel = 'llama3-8b-8192'; 
   // -------------------------------------------------------------------
 
   final List<RSSSource> _rssSources = [
@@ -55,9 +54,7 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   void initState() {
     super.initState();
-    // Ensure dotenv is loaded before calling _loadNews if the key is mandatory
     if (dotenv.env.isEmpty) {
-      // In a real app, you'd handle this load, but for now we trust it's loaded in main.
       debugPrint('⚠️ Dotenv not loaded. API key reliance might fail.');
     }
     _loadNews();
@@ -201,7 +198,7 @@ class _NewsScreenState extends State<NewsScreen> {
     }
 
     final systemInstruction =
-        "You are a concise financial news summarizer. Analyze the provided news content and generate a single, professional paragraph (max 40 words) focusing only on the key event and its predicted market impact (Bullish, Bearish, or Neutral). Do not include introductory phrases like 'This article states' or mention the source. Use the mixtral-8x7b-32768 model.";
+        "You are a concise financial news summarizer. Analyze the provided news content and generate a single, professional paragraph (max 40 words) focusing only on the key event and its predicted market impact (Bullish, Bearish, or Neutral). Do not include introductory phrases like 'This article states' or mention the source. Use the Groq model $_groqModel.";
 
     final userQuery = "Summarize the following financial news: $content";
 
@@ -222,7 +219,8 @@ class _NewsScreenState extends State<NewsScreen> {
     };
 
     const maxRetries = 3;
-    Duration delay = const Duration(seconds: 1);
+    Duration delay = const Duration(seconds: 2); // Increased initial delay
+    const timeoutDuration = Duration(seconds: 30); // Increased timeout
 
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -235,7 +233,7 @@ class _NewsScreenState extends State<NewsScreen> {
               },
               body: json.encode(payload),
             )
-            .timeout(const Duration(seconds: 20));
+            .timeout(timeoutDuration);
 
         if (response.statusCode == 200) {
           final result = json.decode(response.body);
@@ -492,18 +490,20 @@ class _NewsScreenState extends State<NewsScreen> {
               );
             } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.startsWith('❌') || snapshot.data!.contains('API Key missing')) {
               summaryText = snapshot.data ?? 'An unknown error occurred.';
+              
+              // Handle error display based on the specific message
+              bool isError = summaryText.startsWith('❌') || summaryText.contains('API Key missing');
+              
               contentWidget = Column(
                 children: [
                   const SizedBox(height: 16),
-                  const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 40),
+                  Icon(isError ? Icons.error_outline : Icons.warning_amber_rounded, color: isError ? const Color(0xFFEF4444) : const Color(0xFFFFD700), size: 40),
                   const SizedBox(height: 16),
                   Text(
-                    summaryText.contains('API Key missing')
-                        ? 'API Key missing. Check your .env file.'
-                        : summaryText,
+                    isError ? summaryText : 'An unexpected response was received.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: summaryText.contains('API Key missing') ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
+                      color: isError ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
                       fontSize: 14,
                     ),
                   ),
