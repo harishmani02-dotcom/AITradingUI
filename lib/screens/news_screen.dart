@@ -28,8 +28,8 @@ class _NewsScreenState extends State<NewsScreen> {
 
   // --- Gemini API Configuration ---
   final String _apiKey = ""; 
-  final String _apiUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
+  final String _Url =
+      'https://generativelanguage.googles.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
   // --------------------------------
 
   final List<RSSSource> _rssSources = [
@@ -189,7 +189,7 @@ class _NewsScreenState extends State<NewsScreen> {
   // --- NEW: AI Summary Fetcher with Exponential Backoff ---
   Future<String> _fetchAiSummary(String content) async {
     if (_apiKey.isEmpty) {
-      return "⚠️ API Key missing. Cannot generate summary.";
+      return "⚠️Read Full Article summary.";
     }
 
     final systemInstruction =
