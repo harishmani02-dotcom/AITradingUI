@@ -15,22 +15,21 @@ class NewsScreen extends StatefulWidget {
 class _NewsScreenState extends State<NewsScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String _selectedSentimentFilter = 'All';
+  String _selectedSourceFilter = 'All';
   bool _isLoading = false;
   bool _autoRefresh = true;
   Timer? _refreshTimer;
   DateTime _lastRefresh = DateTime.now();
 
-  // Gemini API Configuration
-  // NOTE: In a production Flutter app, this key should be secured, not hardcoded.
-  final String apiKey = ""; // Canvas will provide this at runtime
-  final String apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=";
-
-  // State: Filtering
-  String _selectedSentimentFilter = 'All';
-  String _selectedCategoryFilter = 'All';
-
   List<NewsItem> _allNews = [];
   String _errorMessage = '';
+
+  // --- Gemini API Configuration ---
+  final String _apiKey = ""; 
+  final String _apiUrl =
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=';
+  // --------------------------------
 
   final List<RSSSource> _rssSources = [
     RSSSource(
@@ -51,19 +50,11 @@ class _NewsScreenState extends State<NewsScreen> {
     ),
   ];
 
-  final List<String> _sentimentFilters = ['All', 'Bullish', 'Bearish', 'Neutral'];
-  final List<String> _categoryFilters = ['All', 'My Watchlist', 'Market', 'Policy', 'Earnings'];
-
   @override
   void initState() {
     super.initState();
     _loadNews();
     _startAutoRefresh();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.toUpperCase();
-      });
-    });
   }
 
   @override
@@ -82,60 +73,11 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
-  // --- GEMINI API CALL FOR SUMMARY ---
-  Future<String> _fetchAiSummary(String title, String summary) async {
-    final prompt = "Summarize the following financial news article in one short, impactful paragraph (maximum 3 sentences). Focus only on the market impact and key facts. Title: $title. Summary: $summary";
-
-    final payload = {
-        "contents": [
-            {"parts": [{"text": prompt}]}
-        ],
-        "systemInstruction": {
-            "parts": [{"text": "You are a concise financial news analyst. Your response must be purely the summary paragraph, with no preamble."}]
-        }
-    };
-
-    int retries = 0;
-    const maxRetries = 3;
-    const baseDelay = Duration(seconds: 1);
-
-    while (retries < maxRetries) {
-      try {
-        final response = await http.post(
-          Uri.parse('$apiUrl$apiKey'),
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode(payload),
-        ).timeout(const Duration(seconds: 10));
-
-        if (response.statusCode == 200) {
-          final jsonResponse = jsonDecode(response.body);
-          final text = jsonResponse['candidates'][0]['content']['parts'][0]['text'];
-          return text ?? "Failed to generate AI summary.";
-        } else {
-          debugPrint('API Error: ${response.statusCode} - ${response.body}');
-        }
-      } catch (e) {
-        debugPrint('API Request failed (Retry $retries): $e');
-      }
-
-      retries++;
-      if (retries < maxRetries) {
-        await Future.delayed(baseDelay * (1 << (retries - 1))); // Exponential backoff
-      }
-    }
-    return "Failed to connect to AI service after multiple retries.";
-  }
-  // --- END GEMINI API CALL ---
-
   Future<void> _loadNews() async {
     setState(() {
       _isLoading = true;
       _errorMessage = '';
     });
-
-    // ... (rest of _loadNews remains the same)
 
     try {
       List<NewsItem> allArticles = [];
@@ -230,7 +172,8 @@ class _NewsScreenState extends State<NewsScreen> {
             timestamp: pubDate,
             source: source.name,
             url: link,
-            // REMOVED MOCK SUMMARY - it will be fetched on demand now
+            // We use title + summary for the raw content to summarize later
+            rawContent: '$title. $cleanDesc',
           );
         }).toList();
       }
@@ -241,6 +184,75 @@ class _NewsScreenState extends State<NewsScreen> {
       return [];
     }
   }
+
+  // --- NEW: AI Summary Fetcher with Exponential Backoff ---
+  Future<String> _fetchAiSummary(String content) async {
+    if (_apiKey.isEmpty) {
+      return "⚠️ API Key missing. Cannot generate summary.";
+    }
+
+    final systemInstruction =
+        "You are a concise financial news summarizer. Analyze the provided news content and generate a single, professional paragraph (max 40 words) focusing only on the key event and its predicted market impact (Bullish, Bearish, or Neutral). Do not include introductory phrases like 'This article states' or mention the source.";
+
+    final userQuery = "Summarize the following financial news: $content";
+
+    final payload = {
+      'contents': [
+        {
+          'parts': [
+            {'text': userQuery}
+          ]
+        }
+      ],
+      'systemInstruction': {
+        'parts': [
+          {'text': systemInstruction}
+        ]
+      },
+    };
+
+    const maxRetries = 3;
+    Duration delay = const Duration(seconds: 1);
+
+    for (int attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        final response = await http
+            .post(
+              Uri.parse('$_apiUrl$_apiKey'),
+              headers: {'Content-Type': 'application/json'},
+              body: json.encode(payload),
+            )
+            .timeout(const Duration(seconds: 20));
+
+        if (response.statusCode == 200) {
+          final result = json.decode(response.body);
+          final text = result['candidates']?[0]['content']?['parts']?[0]?['text'];
+          if (text != null && text.isNotEmpty) {
+            return text;
+          }
+        }
+        
+        // If status is non-200 or response structure is bad, proceed to retry/fail
+        debugPrint('AI API failed on attempt ${attempt + 1}: Status ${response.statusCode}');
+
+      } on TimeoutException {
+        debugPrint('AI API timed out on attempt ${attempt + 1}');
+      } catch (e) {
+        debugPrint('AI API error on attempt ${attempt + 1}: $e');
+      }
+
+      // Implement exponential backoff delay before next retry
+      if (attempt < maxRetries - 1) {
+        await Future.delayed(delay);
+        delay *= 2; // Double the delay for the next attempt
+      }
+    }
+
+    // After all retries fail
+    return "❌ Failed to connect to AI service after multiple retries. Try again later.";
+  }
+  // -----------------------------------------------------------------
+
 
   String _stripHtml(String text) {
     final exp = RegExp(r'<[^>]*>', multiLine: true);
@@ -351,211 +363,53 @@ class _NewsScreenState extends State<NewsScreen> {
     return 'Neutral';
   }
 
+  void _updateFilter(String type, String value) {
+    setState(() {
+      if (type == 'sentiment') {
+        _selectedSentimentFilter = value;
+      } else if (type == 'source') {
+        _selectedSourceFilter = value;
+      }
+    });
+  }
+
   List<NewsItem> get _filteredNews {
-    final filteredBySentiment = _allNews.where((news) {
-      if (_selectedSentimentFilter == 'All') return true;
-      return news.sentiment == _selectedSentimentFilter;
-    });
+    final news = _allNews.where((news) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          news.symbol.toUpperCase().contains(_searchQuery) ||
+          news.title.toUpperCase().contains(_searchQuery) ||
+          news.summary.toUpperCase().contains(_searchQuery);
 
-    final filteredByCategory = filteredBySentiment.where((news) {
-      if (_selectedCategoryFilter == 'All') return true;
-      if (_selectedCategoryFilter == 'My Watchlist') {
-        // Mocking Watchlist filter logic
-        return ['TCS', 'INFY'].contains(news.symbol);
-      }
-      if (_selectedCategoryFilter == 'Market') {
-        return news.symbol == 'MARKET';
-      }
-      // Since RSS data doesn't provide explicit categories, we'll map source names
-      if (_selectedCategoryFilter == 'Policy' && (news.source.contains('Standard') || news.source.contains('Times'))) {
-        return true;
-      }
-      if (_selectedCategoryFilter == 'Earnings' && (news.title.contains('Q') || news.title.contains('Profit') || news.title.contains('Result'))) {
-        return true;
-      }
-      return false;
-    });
+      final matchesSentiment = _selectedSentimentFilter == 'All' ||
+          news.sentiment == _selectedSentimentFilter;
 
+      final matchesSource = _selectedSourceFilter == 'All' ||
+          news.source == _selectedSourceFilter;
 
-    if (_searchQuery.isEmpty) return filteredByCategory.toList();
-
-    return filteredByCategory.where((news) =>
-      news.symbol.toUpperCase().contains(_searchQuery) ||
-      news.title.toUpperCase().contains(_searchQuery) ||
-      news.summary.toUpperCase().contains(_searchQuery)
-    ).toList();
-  }
-
-  // Helper method to build the filter chips
-  Widget _buildFilterChip(String label, String currentSelection, Function(String) onSelect) {
-    final isSelected = currentSelection == label;
-    return GestureDetector(
-      onTap: () => onSelect(label),
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF252B3B), // Highlight color for selection
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF3B82F6) : Colors.white.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF9CA3AF),
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Helper to show the AI Summary Dialog (Updated to fetch real data)
-  void _showAiSummaryDialog(NewsItem news) {
-    final Color primaryColor = _getSentimentColor(news.sentiment);
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1A1D2E),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              const Icon(Icons.auto_awesome_rounded, color: Color(0xFF3B82F6), size: 24),
-              const SizedBox(width: 8),
-              Text(
-                'AI Summary: ${news.symbol}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-          // Use FutureBuilder to handle the asynchronous API call
-          content: FutureBuilder<String>(
-            future: _fetchAiSummary(news.title, news.summary),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const SizedBox(
-                  height: 150,
-                  child: Center(
-                    child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
-                  ),
-                );
-              } else if (snapshot.hasError || !snapshot.hasData || snapshot.data!.contains("Failed")) {
-                return SizedBox(
-                  height: 150,
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, color: Color(0xFFEF4444)),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Error loading summary.',
-                          style: TextStyle(color: Colors.white.withOpacity(0.8)),
-                        ),
-                        Text(
-                          snapshot.data ?? '',
-                          style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 10),
-                        )
-                      ],
-                    ),
-                  ),
-                );
-              }
-
-              // Display the successful summary
-              final summaryText = snapshot.data!;
-
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    summaryText,
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 14,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Text(
-                        'Analyzed Sentiment:',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.6),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          news.sentiment,
-                          style: TextStyle(
-                            color: primaryColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close', style: TextStyle(color: Color(0xFF3B82F6))),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                _openUrl(news.url);
-              },
-              child: Text('Read Full Article', style: TextStyle(color: primaryColor)),
-            ),
-          ],
-        );
-      },
-    );
+      return matchesSearch && matchesSentiment && matchesSource;
+    }).toList();
+    return news;
   }
 
   Color _getSentimentColor(String sentiment) {
     switch (sentiment) {
       case 'Bullish':
-        return const Color(0xFF22C55E); // Green
+        return const Color(0xFF10B981); // Green
       case 'Bearish':
         return const Color(0xFFEF4444); // Red
       default:
-        return const Color(0xFF9CA3AF); // Gray/Neutral
+        return const Color(0xFF9CA3AF); // Gray
     }
   }
 
   IconData _getSentimentIcon(String sentiment) {
     switch (sentiment) {
       case 'Bullish':
-        return Icons.trending_up;
+        return Icons.trending_up_rounded;
       case 'Bearish':
-        return Icons.trending_down;
+        return Icons.trending_down_rounded;
       default:
-        return Icons.trending_flat;
+        return Icons.trending_flat_rounded;
     }
   }
 
@@ -592,10 +446,146 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
+  void _showAiSummaryDialog(NewsItem news) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return FutureBuilder<String>(
+          future: _fetchAiSummary(news.rawContent),
+          builder: (context, snapshot) {
+            String summaryText;
+            Widget contentWidget;
+            bool isLoading = snapshot.connectionState == ConnectionState.waiting;
+
+            if (isLoading) {
+              summaryText = 'Generating AI Summary...';
+              contentWidget = Column(
+                children: [
+                  const SizedBox(height: 16),
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C3AED)),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    summaryText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFE5E7EB), fontSize: 16),
+                  ),
+                ],
+              );
+            } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.startsWith('❌')) {
+              summaryText = snapshot.data ?? 'An unknown error occurred.';
+              contentWidget = Column(
+                children: [
+                  const SizedBox(height: 16),
+                  const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 40),
+                  const SizedBox(height: 16),
+                  Text(
+                    summaryText,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Color(0xFFEF4444), fontSize: 14),
+                  ),
+                ],
+              );
+            } else {
+              summaryText = snapshot.data!;
+              contentWidget = Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Text(
+                  summaryText,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Color(0xFFE5E7EB),
+                    fontSize: 15,
+                    height: 1.4,
+                  ),
+                ),
+              );
+            }
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: const Color(0xFF7C3AED).withOpacity(0.5),
+                  width: 2,
+                ),
+              ),
+              titlePadding: const EdgeInsets.only(top: 24, bottom: 0, left: 24, right: 24),
+              contentPadding: const EdgeInsets.only(top: 10, left: 24, right: 24, bottom: 0),
+              actionsPadding: const EdgeInsets.all(16),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.auto_awesome, color: Color(0xFF7C3AED), size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'AI Summary: ${news.symbol}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  contentWidget,
+                  if (!isLoading && !summaryText.startsWith('❌')) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text('Sentiment:',
+                          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 13)),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _getSentimentColor(news.sentiment).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            news.sentiment,
+                            style: TextStyle(
+                              color: _getSentimentColor(news.sentiment),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ]
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Close', style: TextStyle(color: Color(0xFF94A3B8))),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _openUrl(news.url);
+                  },
+                  child: const Text('Read Full Article', style: TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filteredArticles = _filteredNews;
+    final sentimentOptions = ['All', 'Bullish', 'Bearish', 'Neutral'];
+    final sourceOptions = ['All', ..._rssSources.map((s) => s.name)];
 
     return Scaffold(
       backgroundColor: const Color(0xFF1A1D2E),
@@ -690,7 +680,6 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
               ),
             ),
-
             SliverToBoxAdapter(
               child: Container(
                 margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -739,51 +728,46 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
               ),
             ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-            // --- FILTERING CHIPS ---
+            
+            // --- NEW: Filter Chips Section ---
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.only(top: 12, bottom: 8, left: 16, right: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Filter by Sentiment:',
-                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
+                    const Text('Filter by:', style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
-                    SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: _sentimentFilters.map((label) => _buildFilterChip(label, _selectedSentimentFilter, (value) {
-                          setState(() => _selectedSentimentFilter = value);
-                        })).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Filter by Category:',
-                      style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 12, fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 40,
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: _categoryFilters.map((label) => _buildFilterChip(label, _selectedCategoryFilter, (value) {
-                          setState(() => _selectedCategoryFilter = value);
-                        })).toList(),
+                    // Sentiment Filters
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: sentimentOptions.map((sentiment) => _buildFilterChip(
+                          sentiment,
+                          _selectedSentimentFilter == sentiment,
+                          () => _updateFilter('sentiment', sentiment),
+                          _getSentimentColor(sentiment),
+                        )).toList(),
                       ),
                     ),
                     const SizedBox(height: 8),
+                    // Source/Category Filters
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: sourceOptions.map((source) => _buildFilterChip(
+                          source,
+                          _selectedSourceFilter == source,
+                          () => _updateFilter('source', source),
+                          const Color(0xFF7C3AED), // Purple accent for source
+                        )).toList(),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
-            // --- END FILTERING CHIPS ---
+            // --- End Filter Chips Section ---
 
             _isLoading && _allNews.isEmpty
                 ? SliverFillRemaining(
@@ -827,6 +811,7 @@ class _NewsScreenState extends State<NewsScreen> {
                                   color: Colors.grey[400],
                                   fontWeight: FontWeight.w500,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 16),
                               ElevatedButton.icon(
@@ -855,78 +840,110 @@ class _NewsScreenState extends State<NewsScreen> {
       ),
     );
   }
+  
+  // --- NEW: Filter Chip Widget ---
+  Widget _buildFilterChip(String label, bool isSelected, VoidCallback onPressed, Color color) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: ActionChip(
+        label: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : color,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
+        onPressed: onPressed,
+        backgroundColor: isSelected ? color : const Color(0xFF252B3B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(
+            color: isSelected ? color : const Color(0xFF3B4252),
+            width: 1,
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      ),
+    );
+  }
+  // --- End Filter Chip Widget ---
 
-  // --- VISUAL DENSITY and AI SUMMARY BUTTON ---
+
   Widget _buildNewsCard(NewsItem news) {
     final sentimentColor = _getSentimentColor(news.sentiment);
 
     return GestureDetector(
-      // Opens the full article link
       onTap: () => _openUrl(news.url),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: const Color(0xFF252B3B),
+          color: const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withOpacity(0.1), width: 0.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row 1: Stock Symbol, Source, and Sentiment (Condensed Header)
+            // Row 1: Stock Symbol, Source, and Sentiment
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    // Stock Initial/Source Icon (Visual Density)
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: sentimentColor.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Center(
-                        child: Text(
-                          news.symbol.substring(0, 1),
-                          style: TextStyle(
-                            color: sentimentColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          news.symbol,
-                          style: const TextStyle(
-                            color: Color(0xFF3B82F6),
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                        Text(
-                          news.source,
-                          style: const TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                // Sentiment Tag
+                // Stock Initial (Visual Density)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF3B4252),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      news.symbol.substring(0, 1),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        news.symbol,
+                        style: const TextStyle(
+                          color: Color(0xFFC084FC),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      Text(
+                        '${news.source} • ${_getTimeAgo(news.timestamp)}',
+                        style: const TextStyle(
+                          color: Color(0xFF94A3B8),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Sentiment Tag (Integrated)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: sentimentColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(6),
@@ -954,9 +971,9 @@ class _NewsScreenState extends State<NewsScreen> {
               ],
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
 
-            // Article Title and Summary (Core Content)
+            // Row 2: Title and Summary
             Text(
               news.title,
               style: const TextStyle(
@@ -973,55 +990,41 @@ class _NewsScreenState extends State<NewsScreen> {
               news.summary,
               style: const TextStyle(
                 color: Color(0xFF9CA3AF),
-                fontSize: 12,
+                fontSize: 13,
                 height: 1.4,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-
-            const SizedBox(height: 10),
-
-            // Row 3: Time Ago & AI Summary Button
+            
+            const SizedBox(height: 12),
+            
+            // Row 3: Actions (AI Summary Button)
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Text(
-                  _getTimeAgo(news.timestamp),
-                  style: const TextStyle(
-                    color: Color(0xFF6B7280),
-                    fontSize: 11,
+                // AI Summary Button
+                TextButton.icon(
+                  onPressed: () => _showAiSummaryDialog(news),
+                  icon: const Icon(Icons.auto_awesome, color: Color(0xFFC084FC), size: 16),
+                  label: const Text('AI Summary', style: TextStyle(color: Color(0xFFC084FC), fontSize: 13, fontWeight: FontWeight.w600)),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    backgroundColor: const Color(0xFF7C3AED).withOpacity(0.1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   ),
                 ),
+                
+                const SizedBox(width: 8),
 
-                // AI Summary Button (Enhancement 3)
-                GestureDetector(
-                  // Open the dialog to trigger the API call
-                  onTap: () => _showAiSummaryDialog(news),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF8B5CF6).withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.auto_awesome_rounded, color: Color(0xFFA78BFA), size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'AI Summary',
-                          style: TextStyle(
-                            color: Color(0xFFA78BFA),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                // Arrow to Full Article
+                const Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  color: Color(0xFF9CA3AF),
+                  size: 14,
                 ),
-
               ],
             ),
           ],
@@ -1029,7 +1032,6 @@ class _NewsScreenState extends State<NewsScreen> {
       ),
     );
   }
-
 }
 
 
@@ -1041,7 +1043,7 @@ class NewsItem {
   final DateTime timestamp;
   final String source;
   final String url;
-  // Removed aiSummary field as it is fetched on demand
+  final String rawContent; // NEW: Full content for AI summarization
 
   NewsItem({
     required this.symbol,
@@ -1051,6 +1053,7 @@ class NewsItem {
     required this.timestamp,
     required this.source,
     required this.url,
+    required this.rawContent,
   });
 }
 
@@ -1064,3 +1067,4 @@ class RSSSource {
     required this.url,
   });
 }
+ 
