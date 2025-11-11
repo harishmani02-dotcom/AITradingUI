@@ -26,10 +26,11 @@ class _NewsScreenState extends State<NewsScreen> {
   List<NewsItem> _allNews = [];
   String _errorMessage = '';
 
-  // --- Groq API Configuration ---
+  // --- Groq API Configuration (Updated for Speed and Stability) ---
   final String _groqApiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  final String _groqModel = 'llama3-8b-8192';
-  // ------------------------------
+  // Switched to a faster model to prevent timeouts
+  final String _groqModel = 'llama3-8b-8192'; 
+  // -------------------------------------------------------------------
 
   final List<RSSSource> _rssSources = [
     RSSSource(
@@ -53,22 +54,11 @@ class _NewsScreenState extends State<NewsScreen> {
   @override
   void initState() {
     super.initState();
-    _checkEnvironment();
+    if (dotenv.env.isEmpty) {
+      debugPrint('⚠️ Dotenv not loaded. API key reliance might fail.');
+    }
     _loadNews();
     _startAutoRefresh();
-  }
-
-  void _checkEnvironment() {
-    if (dotenv.env.isEmpty) {
-      debugPrint('⚠️ WARNING: Dotenv is empty. Make sure .env is loaded properly.');
-    } else {
-      final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
-      if (apiKey.isEmpty) {
-        debugPrint('⚠️ WARNING: GROQ_API_KEY not found in .env file');
-      } else {
-        debugPrint('✅ GROQ_API_KEY found (${apiKey.length} characters)');
-      }
-    }
   }
 
   @override
@@ -186,6 +176,7 @@ class _NewsScreenState extends State<NewsScreen> {
             timestamp: pubDate,
             source: source.name,
             url: link,
+            // We use title + summary for the raw content to summarize later
             rawContent: '$title. $cleanDesc',
           );
         }).toList();
@@ -198,106 +189,85 @@ class _NewsScreenState extends State<NewsScreen> {
     }
   }
 
-  // --- IMPROVED AI SUMMARY FETCHER ---
+  // --- UPDATED: AI Summary Fetcher using Groq and Dotenv ---
   Future<String> _fetchAiSummary(String content) async {
-    // Validate API key first
     final apiKey = dotenv.env['GROQ_API_KEY'] ?? '';
-    
+
     if (apiKey.isEmpty) {
-      debugPrint('❌ GROQ_API_KEY not found in .env file');
-      return "⚠️ API Key missing. Please add GROQ_API_KEY to your .env file.";
+      return "⚠️ API Key missing. Cannot generate summary.";
     }
-    
-    // Truncate content to prevent token overflow
-    final truncatedContent = content.length > 500 
-        ? content.substring(0, 500) 
-        : content;
 
     final systemInstruction =
-        "You are a concise financial news summarizer. Provide a brief analysis in 30-40 words highlighting the key event and market impact (Bullish/Bearish/Neutral). Be direct and skip introductory phrases.";
+        "You are a concise financial news summarizer. Analyze the provided news content and generate a single, professional paragraph (max 40 words) focusing only on the key event and its predicted market impact (Bullish, Bearish, or Neutral). Do not include introductory phrases like 'This article states' or mention the source. Use the Groq model $_groqModel.";
 
-    final userQuery = "Summarize this financial news: $truncatedContent";
+    final userQuery = "Summarize the following financial news: $content";
 
     final payload = {
       'model': _groqModel,
       'messages': [
-        {'role': 'system', 'content': systemInstruction},
-        {'role': 'user', 'content': userQuery},
+        {
+          'role': 'system',
+          'content': systemInstruction,
+        },
+        {
+          'role': 'user',
+          'content': userQuery,
+        },
       ],
-      'temperature': 0.3,
-      'max_tokens': 100,
-      'top_p': 1,
+      'temperature': 0.1,
+      'max_tokens': 150,
     };
 
-    const maxRetries = 2;
-    Duration delay = const Duration(seconds: 1);
-    const timeoutDuration = Duration(seconds: 20);
+    const maxRetries = 3;
+    Duration delay = const Duration(seconds: 2); // Increased initial delay
+    const timeoutDuration = Duration(seconds: 30); // Increased timeout
 
     for (int attempt = 0; attempt < maxRetries; attempt++) {
       try {
-        debugPrint('🔄 AI Summary attempt ${attempt + 1}/$maxRetries');
-        
-        final response = await http.post(
-          Uri.parse(_groqApiUrl),
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer $apiKey',
-          },
-          body: json.encode(payload),
-        ).timeout(timeoutDuration);
-
-        debugPrint('📡 Response status: ${response.statusCode}');
+        final response = await http
+            .post(
+              Uri.parse(_groqApiUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer $apiKey', // Using Groq authentication
+              },
+              body: json.encode(payload),
+            )
+            .timeout(timeoutDuration);
 
         if (response.statusCode == 200) {
           final result = json.decode(response.body);
-          final text = result['choices']?[0]?['message']?['content']?.toString().trim();
-          
+          final text = result['choices']?[0]['message']?['content'];
           if (text != null && text.isNotEmpty) {
-            debugPrint('✅ AI Summary generated successfully');
             return text;
           }
-        } else if (response.statusCode == 401) {
-          debugPrint('❌ Unauthorized: Invalid API key');
-          return "❌ Invalid API Key. Please verify your GROQ_API_KEY in the .env file.";
-        } else if (response.statusCode == 429) {
-          debugPrint('⚠️ Rate limit exceeded');
-          return "⚠️ Rate limit reached. Please try again in a few minutes.";
-        } else if (response.statusCode == 503) {
-          debugPrint('⚠️ Service unavailable');
-          if (attempt == maxRetries - 1) {
-            return "⚠️ Groq API is temporarily unavailable. Try again later.";
-          }
-        } else {
-          debugPrint('❌ Unexpected response: ${response.statusCode} - ${response.body}');
         }
+        
+        // Handle 401 Unauthorized error specifically
+        if (response.statusCode == 401) {
+          return "❌ Invalid API Key. Please check the GROQ_API_KEY in your .env file.";
+        }
+
+        debugPrint('AI API failed on attempt ${attempt + 1}: Status ${response.statusCode}');
 
       } on TimeoutException {
-        debugPrint('⏱️ Request timed out on attempt ${attempt + 1}');
-        if (attempt == maxRetries - 1) {
-          return "⚠️ Connection timeout. The AI service is not responding. Check your internet connection.";
-        }
-      } on http.ClientException catch (e) {
-        debugPrint('🌐 Network error: $e');
-        if (attempt == maxRetries - 1) {
-          return "❌ Network error. Please check your internet connection.";
-        }
+        debugPrint('AI API timed out on attempt ${attempt + 1}');
       } catch (e) {
-        debugPrint('❌ Unexpected error: $e');
-        if (attempt == maxRetries - 1) {
-          return "❌ An unexpected error occurred: ${e.toString()}";
-        }
+        debugPrint('AI API error on attempt ${attempt + 1}: $e');
       }
 
-      // Exponential backoff
+      // Implement exponential backoff delay before next retry
       if (attempt < maxRetries - 1) {
         await Future.delayed(delay);
-        delay *= 2;
+        delay *= 2; // Double the delay for the next attempt
       }
     }
 
-    return "❌ Unable to generate summary after $maxRetries attempts. Please try again.";
+    // After all retries fail
+    return "❌ Failed to connect to AI service after multiple retries. Try again later.";
   }
-  // -------------------------------------
+  // -----------------------------------------------------------------
+
 
   String _stripHtml(String text) {
     final exp = RegExp(r'<[^>]*>', multiLine: true);
@@ -439,11 +409,11 @@ class _NewsScreenState extends State<NewsScreen> {
   Color _getSentimentColor(String sentiment) {
     switch (sentiment) {
       case 'Bullish':
-        return const Color(0xFF10B981);
+        return const Color(0xFF10B981); // Green
       case 'Bearish':
-        return const Color(0xFFEF4444);
+        return const Color(0xFFEF4444); // Red
       default:
-        return const Color(0xFF9CA3AF);
+        return const Color(0xFF9CA3AF); // Gray
     }
   }
 
@@ -518,40 +488,25 @@ class _NewsScreenState extends State<NewsScreen> {
                   ),
                 ],
               );
-            } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.startsWith('❌') || snapshot.data!.startsWith('⚠️')) {
+            } else if (snapshot.hasError || snapshot.data == null || snapshot.data!.startsWith('❌') || snapshot.data!.contains('API Key missing')) {
               summaryText = snapshot.data ?? 'An unknown error occurred.';
               
-              bool isError = summaryText.startsWith('❌');
-              bool isWarning = summaryText.startsWith('⚠️');
+              // Handle error display based on the specific message
+              bool isError = summaryText.startsWith('❌') || summaryText.contains('API Key missing');
               
               contentWidget = Column(
                 children: [
                   const SizedBox(height: 16),
-                  Icon(
-                    isError ? Icons.error_outline : Icons.warning_amber_rounded, 
-                    color: isError ? const Color(0xFFEF4444) : const Color(0xFFFFA500), 
-                    size: 40
-                  ),
+                  Icon(isError ? Icons.error_outline : Icons.warning_amber_rounded, color: isError ? const Color(0xFFEF4444) : const Color(0xFFFFD700), size: 40),
                   const SizedBox(height: 16),
                   Text(
-                    summaryText,
+                    isError ? summaryText : 'An unexpected response was received.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: isError ? const Color(0xFFEF4444) : const Color(0xFFFFA500),
+                      color: isError ? const Color(0xFFEF4444) : const Color(0xFFE5E7EB),
                       fontSize: 14,
                     ),
                   ),
-                  if (isError || isWarning) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Check console logs for details',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.grey[500],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ]
                 ],
               );
             } else {
@@ -587,15 +542,12 @@ class _NewsScreenState extends State<NewsScreen> {
                 children: [
                   const Icon(Icons.auto_awesome, color: Color(0xFF7C3AED), size: 24),
                   const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'AI Summary: ${news.symbol}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                  Text(
+                    'AI Summary: ${news.symbol}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
                   ),
                 ],
@@ -604,7 +556,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   contentWidget,
-                  if (!isLoading && !summaryText.startsWith('❌') && !summaryText.startsWith('⚠️')) ...[
+                  if (!isLoading && !summaryText.startsWith('❌') && !summaryText.contains('API Key missing')) ...[
                     const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -799,6 +751,7 @@ class _NewsScreenState extends State<NewsScreen> {
               ),
             ),
             
+            // --- NEW: Filter Chips Section ---
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.only(top: 12, bottom: 8, left: 16, right: 16),
@@ -807,6 +760,7 @@ class _NewsScreenState extends State<NewsScreen> {
                   children: [
                     const Text('Filter by:', style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13, fontWeight: FontWeight.w500)),
                     const SizedBox(height: 8),
+                    // Sentiment Filters
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -819,6 +773,7 @@ class _NewsScreenState extends State<NewsScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
+                    // Source/Category Filters
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: Row(
@@ -826,7 +781,7 @@ class _NewsScreenState extends State<NewsScreen> {
                           source,
                           _selectedSourceFilter == source,
                           () => _updateFilter('source', source),
-                          const Color(0xFF7C3AED),
+                          const Color(0xFF7C3AED), // Purple accent for source
                         )).toList(),
                       ),
                     ),
@@ -834,6 +789,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 ),
               ),
             ),
+            // --- End Filter Chips Section ---
 
             _isLoading && _allNews.isEmpty
                 ? SliverFillRemaining(
@@ -907,6 +863,7 @@ class _NewsScreenState extends State<NewsScreen> {
     );
   }
   
+  // --- NEW: Filter Chip Widget ---
   Widget _buildFilterChip(String label, bool isSelected, VoidCallback onPressed, Color color) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -932,6 +889,8 @@ class _NewsScreenState extends State<NewsScreen> {
       ),
     );
   }
+  // --- End Filter Chip Widget ---
+
 
   Widget _buildNewsCard(NewsItem news) {
     final sentimentColor = _getSentimentColor(news.sentiment);
@@ -955,8 +914,10 @@ class _NewsScreenState extends State<NewsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Row 1: Stock Symbol, Source, and Sentiment
             Row(
               children: [
+                // Stock Initial (Visual Density)
                 Container(
                   width: 32,
                   height: 32,
@@ -999,6 +960,7 @@ class _NewsScreenState extends State<NewsScreen> {
                     ],
                   ),
                 ),
+                // Sentiment Tag (Integrated)
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 8,
@@ -1033,6 +995,7 @@ class _NewsScreenState extends State<NewsScreen> {
 
             const SizedBox(height: 12),
 
+            // Row 2: Title and Summary
             Text(
               news.title,
               style: const TextStyle(
@@ -1058,9 +1021,11 @@ class _NewsScreenState extends State<NewsScreen> {
             
             const SizedBox(height: 12),
             
+            // Row 3: Actions (AI Summary Button)
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                // AI Summary Button
                 TextButton.icon(
                   onPressed: () => _showAiSummaryDialog(news),
                   icon: const Icon(Icons.auto_awesome, color: Color(0xFFC084FC), size: 16),
@@ -1076,6 +1041,7 @@ class _NewsScreenState extends State<NewsScreen> {
                 
                 const SizedBox(width: 8),
 
+                // Arrow to Full Article
                 const Icon(
                   Icons.arrow_forward_ios_rounded,
                   color: Color(0xFF9CA3AF),
@@ -1099,7 +1065,7 @@ class NewsItem {
   final DateTime timestamp;
   final String source;
   final String url;
-  final String rawContent;
+  final String rawContent; // NEW: Full content for AI summarization
 
   NewsItem({
     required this.symbol,
