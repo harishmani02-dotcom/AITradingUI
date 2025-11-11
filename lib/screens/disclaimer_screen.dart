@@ -35,7 +35,7 @@ class DisclaimerScreen extends StatelessWidget {
               iconColor: const Color(0xFF8B5CF6),
               title: 'EDUCATIONAL LEARNING INDICATORS ONLY',
               content:
-                  'The signals provided by this application are educational learning indicators generated through automated analysis of publicly available stock market data using technical indicators (RSI, MACD, Bollinger Bands, Volume Analysis, and Candlestick Patterns).',
+                  'The signals provided by this application are educational learning indicators generated through automated analysis of publicly available stock market data using technical indicators (RSI, MACD, Average True Range (ATR), Exponential Moving Averages, Bollinger Bands, Volume Analysis, and Candlestick Patterns).',
             ),
             const SizedBox(height: 16),
             
@@ -479,3 +479,4 @@ class DisclaimerScreen extends StatelessWidget {
     );
   }
 }
+
