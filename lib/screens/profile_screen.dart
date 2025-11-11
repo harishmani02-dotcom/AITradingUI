@@ -318,7 +318,7 @@ class ProfileScreen extends StatelessWidget {
                 context,
                 icon: Icons.help_outline,
                 title: 'Help & Support',
-                subtitle: 'Get assistance',
+                subtitle: 'Get assistance call us :9884224217',
                 onTap: () {
                   // Add help screen navigation
                 },
@@ -393,7 +393,7 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '© 2025 AI Trading Signals',
+                '© 2025 FinSparkAI',
                 style: TextStyle(
                   fontSize: 12,
                   color: Colors.grey[600],
@@ -462,3 +462,4 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 }
+
