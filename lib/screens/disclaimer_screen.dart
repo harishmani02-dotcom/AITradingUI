@@ -401,9 +401,9 @@ class DisclaimerScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _buildContactRow(Icons.email_outlined, 'support@aitradingsignals.com'),
+          _buildContactRow(Icons.email_outlined, 'support@finsparkai.com'),
           const SizedBox(height: 8),
-          _buildContactRow(Icons.language, 'www.aitradingsignals.com'),
+          _buildContactRow(Icons.language, 'www.finsparkai.com'),
           const SizedBox(height: 12),
           Text(
             'Last updated: ${DateTime.now().year}',
@@ -479,4 +479,5 @@ class DisclaimerScreen extends StatelessWidget {
     );
   }
 }
+
 
