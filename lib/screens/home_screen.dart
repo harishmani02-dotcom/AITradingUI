@@ -10,8 +10,9 @@ import 'alerts_screen.dart';
 import 'profile_screen.dart';
 import 'ai_chat_screen.dart';
 import 'subscription_screen.dart';
+import 'dart:ui'; // Required for BackdropFilter
 
-// --- REVISED DISCLAIMER CONTENT (As Requested in the first prompt) ---
+// --- REVISED DISCLAIMER CONTENT ---
 const String _REVISED_DISCLAIMER_TEXT = """
 ***⚠️ Risk and Liability***
 
@@ -1100,7 +1101,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// --- NEW WIDGET: Trendy Glassy Disclaimer Modal (Updated with Two-Card Layout and Golden/Amber Theme) ---
+// --- NEW WIDGET: Trendy Glassy Disclaimer Modal (Size Reduced, Glass Effect Added) ---
 
 class _DisclaimerModal extends StatelessWidget {
   final String disclaimerText;
@@ -1120,121 +1121,132 @@ class _DisclaimerModal extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Material(
-          color: Colors.transparent,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              // Main Modal Container (The Golden/Amber Glassy Frame)
-              decoration: BoxDecoration(
-                color: darkBackground.withOpacity(0.9),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: amberPrimary.withOpacity(0.5), // Amber border
-                  width: 1.5,
+        // Reduced padding for a smaller modal size
+        padding: const EdgeInsets.all(16.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            // --- CRITICAL: BackdropFilter for the Glass Effect ---
+            filter: ImageFilter.blur(sigmaX: 8.0, sigmaY: 8.0),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                // Main Modal Container (The Golden/Amber Glassy Frame)
+                constraints: const BoxConstraints(
+                  // Maximize height to fit scrollable content while respecting padding
+                  maxHeight: 450, 
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: amberPrimary.withOpacity(0.3), // Amber glow
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
+                decoration: BoxDecoration(
+                  color: darkBackground.withOpacity(0.75), // Semi-transparent background
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: amberPrimary.withOpacity(0.5), // Amber border
+                    width: 1.5,
                   ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-
-                  // --- CARD 1: Header/Title Section (Fixed) ---
-                  Container(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 15),
-                    decoration: BoxDecoration(
-                       // Slightly different background for card separation
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      border: Border(bottom: BorderSide(
-                        color: amberPrimary.withOpacity(0.3),
-                        width: 1,
-                      )),
+                  boxShadow: [
+                    BoxShadow(
+                      color: amberPrimary.withOpacity(0.3), // Amber glow
+                      blurRadius: 30,
+                      offset: const Offset(0, 10),
                     ),
-                    child: const Column(
-                      children: [
-                        Icon(
-                          Icons.gavel_rounded,
-                          color: amberPrimary,
-                          size: 40,
-                        ),
-                        SizedBox(height: 10),
-                        Text(
-                          'Legal Disclaimer & Risk Warning',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
 
-                  // --- CARD 2: Scrollable Content & Button Section ---
-                  Flexible(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    // --- CARD 1: Header/Title Section (Fixed) ---
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                       decoration: BoxDecoration(
-                        color: darkBackground.withOpacity(0.8), // Back to primary dark color
+                         // Slightly different background for card separation
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                        border: Border(bottom: BorderSide(
+                          color: amberPrimary.withOpacity(0.3),
+                          width: 1,
+                        )),
                       ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                      child: const Column(
                         children: [
-                          // Scrollable Disclaimer Text
-                          Flexible(
-                            child: SingleChildScrollView(
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
-                              child: Text(
-                                disclaimerText,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white.withOpacity(0.8),
-                                  height: 1.5,
-                                ),
-                              ),
-                            ),
+                          Icon(
+                            Icons.gavel_rounded,
+                            color: amberPrimary,
+                            size: 32, // Slightly reduced icon size for smaller modal
                           ),
-                          
-                          // Acceptance Button (Fixed at Bottom of Card 2)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-                            child: ElevatedButton(
-                              onPressed: onAccept,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: amberPrimary, // Amber button color
-                                foregroundColor: Colors.black87, // Darker text for contrast
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                textStyle: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16,
-                                  letterSpacing: 0.5,
-                                ),
-                                elevation: 10,
-                                shadowColor: amberPrimary.withOpacity(0.5),
-                              ),
-                              child: const Text('I ACCEPT AND UNDERSTAND AND CONTINUE'),
+                          SizedBox(height: 8),
+                          Text(
+                            'Legal Disclaimer & Risk Warning',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 18, // Reduced font size for smaller modal
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              letterSpacing: -0.5,
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                ],
+
+                    // --- CARD 2: Scrollable Content & Button Section ---
+                    Flexible(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: darkBackground.withOpacity(0.8), 
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Scrollable Disclaimer Text
+                            Flexible(
+                              child: SingleChildScrollView(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                child: Text(
+                                  disclaimerText,
+                                  style: TextStyle(
+                                    fontSize: 12, // Reduced font size
+                                    fontWeight: FontWeight.w500,
+                                    color: Colors.white.withOpacity(0.8),
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            
+                            // Acceptance Button (Fixed at Bottom of Card 2)
+                            Padding(
+                              // Reduced button padding
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 16), 
+                              child: ElevatedButton(
+                                onPressed: onAccept,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: amberPrimary, 
+                                  foregroundColor: Colors.black87, 
+                                  padding: const EdgeInsets.symmetric(vertical: 12), // Reduced vertical padding
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  textStyle: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14, // Reduced font size
+                                    letterSpacing: 0.5,
+                                  ),
+                                  elevation: 8,
+                                  shadowColor: amberPrimary.withOpacity(0.5),
+                                ),
+                                // --- Updated Button Text ---
+                                child: const Text('I ACCEPT AND UNDERSTAND'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
