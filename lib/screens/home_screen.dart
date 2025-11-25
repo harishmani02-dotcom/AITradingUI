@@ -11,7 +11,7 @@ import 'profile_screen.dart';
 import 'ai_chat_screen.dart';
 import 'subscription_screen.dart';
 
-// --- REVISED DISCLAIMER CONTENT (As Requested) ---
+// --- REVISED DISCLAIMER CONTENT (As Requested in the first prompt) ---
 const String _REVISED_DISCLAIMER_TEXT = """
 ***⚠️ Risk and Liability***
 
@@ -25,14 +25,17 @@ const String _REVISED_DISCLAIMER_TEXT = """
 ***🎓 Educational Tools and Advice***
 
 * The signals are provided for **educational purposes only**.
+* The signals are **NOT investment recommendations or financial advice**.
 * The company is **NOT SEBI-registered Research Analysts**.
 * Users must conduct their **own research and due diligence**.
+* Users must consult a **registered financial advisor**.
 
 ***🔧 Accuracy and Data***
 
 * AI predictions are based on historical patterns.
 * **No system guarantees 100% accuracy**.
 * Backtested results may not reflect future performance.
+* **Stock data is from Yahoo Finance (15-minute delayed)**.
 
 ***✅ User Safety and Compliance***
 
@@ -1097,7 +1100,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
-// --- NEW WIDGET: Trendy Glassy Disclaimer Modal (Unchanged) ---
+// --- NEW WIDGET: Trendy Glassy Disclaimer Modal (Updated with Two-Card Layout and Golden/Amber Theme) ---
 
 class _DisclaimerModal extends StatelessWidget {
   final String disclaimerText;
@@ -1110,88 +1113,128 @@ class _DisclaimerModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Define the primary color for the golden/amber look
+    const Color amberPrimary = Color(0xFFFACC15); // Tailwind yellow-400
+    const Color amberSecondary = Color(0xFFEAB308); // Tailwind yellow-600
+    const Color darkBackground = Color(0xFF1E293B);
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Material(
-          // Use Material to apply shape and elevation
           color: Colors.transparent,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              // The "Glassy" effect using BackdropFilter (requires an ancestor with a background)
+              // Main Modal Container (The Golden/Amber Glassy Frame)
               decoration: BoxDecoration(
-                // Base background for the glow effect
-                color: const Color(0xFF1E293B).withOpacity(0.9), 
+                color: darkBackground.withOpacity(0.9),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.15),
+                  color: amberPrimary.withOpacity(0.5), // Amber border
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                    color: amberPrimary.withOpacity(0.3), // Amber glow
                     blurRadius: 30,
                     offset: const Offset(0, 10),
                   ),
                 ],
               ),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Icon(
-                        Icons.warning_amber_rounded,
-                        color: Color(0xFFFACC15),
-                        size: 40,
-                      ),
-                      const SizedBox(height: 10),
-                      const Text(
-                        'Legal Disclaimer & Risk Warning',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                          letterSpacing: -0.5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+
+                  // --- CARD 1: Header/Title Section (Fixed) ---
+                  Container(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 15),
+                    decoration: BoxDecoration(
+                       // Slightly different background for card separation
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                      border: Border(bottom: BorderSide(
+                        color: amberPrimary.withOpacity(0.3),
+                        width: 1,
+                      )),
+                    ),
+                    child: const Column(
+                      children: [
+                        Icon(
+                          Icons.gavel_rounded,
+                          color: amberPrimary,
+                          size: 40,
                         ),
-                      ),
-                      const Divider(color: Color(0xFF8B5CF6), thickness: 2, height: 30),
-                      Text(
-                        disclaimerText,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white.withOpacity(0.8),
-                          height: 1.5,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: onAccept,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF8B5CF6),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          textStyle: const TextStyle(
+                        SizedBox(height: 10),
+                        Text(
+                          'Legal Disclaimer & Risk Warning',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
                             fontWeight: FontWeight.w800,
-                            fontSize: 16,
-                            letterSpacing: 0.5,
+                            color: Colors.white,
+                            letterSpacing: -0.5,
                           ),
-                          elevation: 10,
-                          shadowColor: const Color(0xFF8B5CF6).withOpacity(0.5),
                         ),
-                        child: const Text('I ACCEPT AND UNDERSTAND'),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+
+                  // --- CARD 2: Scrollable Content & Button Section ---
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: darkBackground.withOpacity(0.8), // Back to primary dark color
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Scrollable Disclaimer Text
+                          Flexible(
+                            child: SingleChildScrollView(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Text(
+                                disclaimerText,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.white.withOpacity(0.8),
+                                  height: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                          
+                          // Acceptance Button (Fixed at Bottom of Card 2)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
+                            child: ElevatedButton(
+                              onPressed: onAccept,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: amberPrimary, // Amber button color
+                                foregroundColor: Colors.black87, // Darker text for contrast
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                textStyle: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                  letterSpacing: 0.5,
+                                ),
+                                elevation: 10,
+                                shadowColor: amberPrimary.withOpacity(0.5),
+                              ),
+                              child: const Text('I ACCEPT AND UNDERSTAND AND CONTINUE'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
