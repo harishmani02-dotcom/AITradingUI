@@ -11,6 +11,38 @@ import 'profile_screen.dart';
 import 'ai_chat_screen.dart';
 import 'subscription_screen.dart';
 
+// --- REVISED DISCLAIMER CONTENT (As Requested) ---
+const String _REVISED_DISCLAIMER_TEXT = """
+***⚠️ Risk and Liability***
+
+* The app takes **NO responsibility** for trading profits or losses.
+* Trading involves substantial risk of loss and can result in significant financial loss.
+* The app has **no liability** for your financial outcomes.
+* You trade and invest at **your own risk**.
+* All trading decisions and their consequences are **solely yours**.
+* You must not hold the app responsible for any losses incurred.
+
+***🎓 Educational Tools and Advice***
+
+* The signals are provided for **educational purposes only**.
+* The company is **NOT SEBI-registered Research Analysts**.
+* Users must conduct their **own research and due diligence**.
+
+***🔧 Accuracy and Data***
+
+* AI predictions are based on historical patterns.
+* **No system guarantees 100% accuracy**.
+* Backtested results may not reflect future performance.
+
+***✅ User Safety and Compliance***
+
+* Only invest money you can afford to lose.
+* Diversify your portfolio to manage risk.
+* Stop-loss orders can help limit losses.
+* This app complies with the **Indian IT Act 2000**.
+* User consent is obtained for data collection.
+""";
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
   @override
@@ -38,6 +70,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     )..repeat(reverse: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeScreen();
+      // 🚨 CRITICAL: Show disclaimer immediately after the first frame is built
+      _showDisclaimerPopup();
     });
   }
 
@@ -49,10 +83,35 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // --- START DISCLAIMER IMPLEMENTATION ---
+
+  void _showDisclaimerPopup() {
+    // Only show if the widget is mounted
+    if (!mounted) return;
+    
+    // Using showDialog with barrierDismissible: false forces user acceptance
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return _DisclaimerModal(
+          disclaimerText: _REVISED_DISCLAIMER_TEXT,
+          onAccept: () {
+            // Navigator.of(context).pop() closes the dialog
+            Navigator.of(context).pop(); 
+          },
+        );
+      },
+    );
+  }
+
+  // --- END DISCLAIMER IMPLEMENTATION ---
+
   Future<void> _initializeScreen() async {
     await _refreshSubscriptionStatus();
     await _loadSignals();
   }
+  // ... (rest of your methods: _refreshSubscriptionStatus, _showPremiumWelcome, etc. remain here)
 
   Future<void> _refreshSubscriptionStatus() async {
     if (_isRefreshingSubscription) return;
@@ -875,9 +934,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           color: const Color(0xFF1E293B),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, -5),
             ),
           ],
         ),
@@ -1038,4 +1097,106 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 }
 
+// --- NEW WIDGET: Trendy Glassy Disclaimer Modal (Unchanged) ---
 
+class _DisclaimerModal extends StatelessWidget {
+  final String disclaimerText;
+  final VoidCallback onAccept;
+
+  const _DisclaimerModal({
+    required this.disclaimerText,
+    required this.onAccept,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Material(
+          // Use Material to apply shape and elevation
+          color: Colors.transparent,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              // The "Glassy" effect using BackdropFilter (requires an ancestor with a background)
+              decoration: BoxDecoration(
+                // Base background for the glow effect
+                color: const Color(0xFF1E293B).withOpacity(0.9), 
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.15),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF8B5CF6).withOpacity(0.3),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Color(0xFFFACC15),
+                        size: 40,
+                      ),
+                      const SizedBox(height: 10),
+                      const Text(
+                        'Legal Disclaimer & Risk Warning',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const Divider(color: Color(0xFF8B5CF6), thickness: 2, height: 30),
+                      Text(
+                        disclaimerText,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.white.withOpacity(0.8),
+                          height: 1.5,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: onAccept,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF8B5CF6),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          textStyle: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                            letterSpacing: 0.5,
+                          ),
+                          elevation: 10,
+                          shadowColor: const Color(0xFF8B5CF6).withOpacity(0.5),
+                        ),
+                        child: const Text('I ACCEPT AND UNDERSTAND'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
