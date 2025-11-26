@@ -29,6 +29,12 @@ jobs:
           flutter --version
           dart --version
 
+      # 🔥 NEW STEP - Create .env file from GitHub Secret
+      - name: Create .env file
+        run: |
+          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" > .env
+          echo ".env file created successfully"
+
       - name: Install dependencies
         run: flutter pub get
 
