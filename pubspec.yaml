@@ -25,7 +25,7 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.11.0
 
-flutter_launcher_icons:
+flutter_icons:
   android: true
   ios: false
   image_path: "assets/icons/1761905822614.jpg"
@@ -37,3 +37,4 @@ flutter:
   assets:
     - .env
     - assets/icons/1761905822614.jpg
+
