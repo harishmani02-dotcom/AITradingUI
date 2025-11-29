@@ -22,7 +22,6 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
           channel: 'stable'
 
       - name: Show Flutter & Dart version
@@ -38,8 +37,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Generate App Icons
-        run: flutter pub run flutter_launcher_icons
+      # ✅ SKIP icon generation for now
+      # - name: Generate App Icons
+      #   run: flutter pub run flutter_launcher_icons
 
       - name: Run tests if present
         run: |
