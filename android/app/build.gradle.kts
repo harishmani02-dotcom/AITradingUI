@@ -25,21 +25,13 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         
-        // Enable MultiDex support
         multiDexEnabled = true
     }
 
     buildTypes {
         release {
-            // CORRECT KOTLIN DSL SYNTAX:
             isMinifyEnabled = false
             isShrinkResources = false
-            
-            // For production with ProGuard (after creating proguard-rules.pro):
-            // isMinifyEnabled = true
-            // isShrinkResources = true
-            // proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            
             signingConfig = signingConfigs.getByName("debug")
         }
     }
@@ -50,6 +42,5 @@ flutter {
 }
 
 dependencies {
-    // MultiDex support
     implementation("androidx.multidex:multidex:2.0.1")
 }
