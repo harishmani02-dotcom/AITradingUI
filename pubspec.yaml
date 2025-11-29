@@ -2,7 +2,7 @@ name: ai_trading_signals
 description: A Flutter project.
 
 environment:
-  sdk: ^3.5.0
+  sdk: ">=3.5.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -25,16 +25,14 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.11.0
 
-flutter_icons:
+flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icons/1761905822614.jpg"
-  adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/icons/1761905822614.jpg"
+  adaptive_icon_background: "#667eea"
 
 flutter:
   uses-material-design: true
   assets:
     - .env
-    - assets/icons/1761905822614.jpg
-
+    - assets/icons/
