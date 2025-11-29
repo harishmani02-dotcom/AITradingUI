@@ -37,9 +37,25 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # ✅ SKIP icon generation for now
-      # - name: Generate App Icons
-      #   run: flutter pub run flutter_launcher_icons
+      - name: Setup Icon Manually
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          
+          mkdir -p android/app/src/main/res/mipmap-hdpi
+          mkdir -p android/app/src/main/res/mipmap-mdpi
+          mkdir -p android/app/src/main/res/mipmap-xhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          
+          convert assets/icons/1761905822614.jpg -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+          convert assets/icons/1761905822614.jpg -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+          convert assets/icons/1761905822614.jpg -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+          convert assets/icons/1761905822614.jpg -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          convert assets/icons/1761905822614.jpg -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+          
+          echo "✅ Icons created successfully"
+          ls -la android/app/src/main/res/mipmap-*/
 
       - name: Run tests if present
         run: |
@@ -59,13 +75,13 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FinsparkAI-apk
+          name: ai_trading_signals-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FinsparkAI-aab
+          name: ai_trading_signals-aab
           path: build/app/outputs/bundle/release/app-release.aab
           if-no-files-found: error
