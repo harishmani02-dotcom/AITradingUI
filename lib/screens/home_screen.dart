@@ -26,7 +26,6 @@ const String _REVISED_DISCLAIMER_TEXT = """
 ***🎓 Educational Tools and Advice***
 
 * The signals are provided for **educational purposes only**.
-* The signals are **NOT investment recommendations or financial advice**.
 * The company is **NOT SEBI-registered Research Analysts**.
 * Users must conduct their **own research and due diligence**.
 * Users must consult a **registered financial advisor**.
@@ -1255,3 +1254,4 @@ class _DisclaimerModal extends StatelessWidget {
     );
   }
 }
+
