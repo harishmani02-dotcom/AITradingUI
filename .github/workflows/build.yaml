@@ -72,12 +72,14 @@ jobs:
       - name: Build AAB
         run: flutter build appbundle --release
 
+
+      - name: Rename APK
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/FinsparkAI.apk
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FinsparkAI-apk
-          path: build/app/outputs/flutter-apk/FinsparkAI.apk
-          if-no-files-found: error
+        name: FinsparkAI-apk
+        path: build/app/outputs/flutter-apk/FinsparkAI.apk
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
