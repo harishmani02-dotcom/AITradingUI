@@ -1,4 +1,4 @@
-name: ai_trading_signals
+name: FinsparkAI
 description: A Flutter project.
 
 environment:
@@ -36,3 +36,4 @@ flutter:
   assets:
     - .env
     - assets/icons/
+
