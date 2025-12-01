@@ -41,7 +41,13 @@ android {
         create("release") {
             keyAlias = keystoreProperties.getProperty("keyAlias")
             keyPassword = keystoreProperties.getProperty("keyPassword")
-            storeFile = file(keystoreProperties.getProperty("storeFile") ?: "upload-keystore.jks")
+            storeFile = keystoreProperties.getProperty("storeFile")?.let {
+              if (it.startsWith("C:") || it.startsWith("/")) {
+              file(it)
+              } else {
+              file("$projectDir/$it")
+               }
+              }
             storePassword = keystoreProperties.getProperty("storePassword")
         }
     }
@@ -63,4 +69,5 @@ dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
  
+
 
