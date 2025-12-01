@@ -14,8 +14,8 @@ if (keystorePropertiesFile.exists()) {
 }
 
 val flutterMinSdkVersion = 21
-val flutterTargetSdkVersion = 34
-val flutterCompileSdkVersion = 34
+val flutterTargetSdkVersion = 35
+val flutterCompileSdkVersion = 35
 val flutterVersionCode = 1
 val flutterVersionName = "1.0"
 
@@ -80,5 +80,6 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
+
 
 
