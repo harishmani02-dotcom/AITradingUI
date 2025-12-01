@@ -1,6 +1,6 @@
 name: FinsparkAI
 description: A Flutter project.
-version: 1.0.0+2
+version: 2.0.0+2
 environment:
   sdk: ">=3.5.0 <4.0.0"
  
@@ -42,4 +42,5 @@ flutter:
   assets:
     - .env
     - assets/icons/
+
 
