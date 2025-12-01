@@ -64,6 +64,4 @@ jobs:
       with:
         name: app-release-aab
         path: build/app/outputs/bundle/release/app-release.aab
-Key Properties
-Dream It...Visualize It and walk into your New Home !
  
