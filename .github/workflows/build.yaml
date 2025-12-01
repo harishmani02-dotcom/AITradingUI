@@ -30,6 +30,21 @@ jobs:
       run: |
         echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
         echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+        echo "Created .env file"
+        ls -la .env
+ 
+    - name: Verify .env content (without exposing secrets)
+      run: |
+        if [ -f .env ]; then
+          echo ".env file exists"
+          echo "Number of lines: $(wc -l < .env)"
+          # Check if variables are set (without showing values)
+          grep -q "SUPABASE_URL=" .env && echo "✓ SUPABASE_URL is set" || echo "✗ SUPABASE_URL is missing"
+          grep -q "SUPABASE_ANON_KEY=" .env && echo "✓ SUPABASE_ANON_KEY is set" || echo "✗ SUPABASE_ANON_KEY is missing"
+        else
+          echo "ERROR: .env file not created!"
+          exit 1
+        fi
  
     - name: Decode keystore
       run: |
@@ -47,8 +62,19 @@ jobs:
         flutter clean
         flutter pub get
  
+    - name: Verify assets in pubspec.yaml
+      run: |
+        echo "Checking pubspec.yaml assets configuration:"
+        grep -A 5 "assets:" pubspec.yaml || echo "No assets section found!"
+ 
     - name: Build APK
-      run: flutter build apk --release
+      run: flutter build apk --release --verbose
+ 
+    - name: Verify APK
+      run: |
+        ls -lh build/app/outputs/flutter-apk/app-release.apk
+        # Extract and check if .env is in the APK
+        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep -i "\.env\|assets" || echo "Checking APK contents..."
  
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -64,4 +90,3 @@ jobs:
       with:
         name: app-release-aab
         path: build/app/outputs/bundle/release/app-release.aab
- 
