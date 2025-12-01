@@ -47,11 +47,23 @@ jobs:
         flutter clean
         flutter pub get
  
+    - name: Build APK
+      run: flutter build apk --release
+ 
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+ 
     - name: Build AAB
       run: flutter build appbundle --release
  
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: app-release
+        name: app-release-aab
         path: build/app/outputs/bundle/release/app-release.aab
+Key Properties
+Dream It...Visualize It and walk into your New Home !
+ 
