@@ -1,9 +1,7 @@
 name: FinsparkAI
 description: A Flutter project.
-
 environment:
   sdk: ">=3.5.0 <4.0.0"
-
 dependencies:
   flutter:
     sdk: flutter
@@ -18,24 +16,20 @@ dependencies:
   flutter_dotenv: ^5.1.0
   webfeed: ^0.7.0
   intl: ^0.17.0
-
+  app_links: 6.3.2
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
   flutter_launcher_icons: ^0.11.0
-
 flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icons/1761905822614.jpg"
   adaptive_icon_background: "#667eea"
   android_app_name: "FinsparkAI"
-
 flutter:
   uses-material-design: true
   assets:
     - .env
     - assets/icons/
-
-
