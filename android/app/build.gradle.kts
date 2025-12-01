@@ -15,8 +15,8 @@ if (keystorePropertiesFile.exists()) {
  
 android {
     namespace = "com.example.ai_trading_signals"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 34  // Changed from flutter.compileSdkVersion to explicit version
+    ndkVersion = "25.1.8937393"  // Changed from flutter.ndkVersion to explicit version
  
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -29,10 +29,10 @@ android {
  
     defaultConfig {
         applicationId = "com.example.ai_trading_signals"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = 21  // Changed from flutter.minSdkVersion to explicit version
+        targetSdk = 34  // Changed from flutter.targetSdkVersion to explicit version
+        versionCode = 1  // Changed from flutter.versionCode
+        versionName = "1.0"  // Changed from flutter.versionName
        
         multiDexEnabled = true
     }
@@ -42,12 +42,12 @@ android {
             keyAlias = keystoreProperties.getProperty("keyAlias")
             keyPassword = keystoreProperties.getProperty("keyPassword")
             storeFile = keystoreProperties.getProperty("storeFile")?.let {
-              if (it.startsWith("C:") || it.startsWith("/")) {
-              file(it)
-              } else {
-              file("$projectDir/$it")
-               }
-              }
+                if (it.startsWith("C:") || it.startsWith("/")) {
+                    file(it)
+                } else {
+                    file("$projectDir/$it")
+                }
+            }
             storePassword = keystoreProperties.getProperty("storePassword")
         }
     }
@@ -68,6 +68,3 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
- 
-
-
