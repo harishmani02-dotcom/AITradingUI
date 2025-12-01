@@ -55,3 +55,12 @@ jobs:
       with:
         name: app-release
         path: build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Build AAB
+      run: flutter build aab --release
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: aab-release
+        path: build/app/outputs/bundle/app-release.aab
