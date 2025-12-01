@@ -12,11 +12,23 @@ val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+
+val flutterMinSdkVersion = 21
+val flutterTargetSdkVersion = 34
+val flutterCompileSdkVersion = 34
+val flutterVersionCode = 1
+val flutterVersionName = "1.0"
+
+extra["flutter.minSdkVersion"] = flutterMinSdkVersion
+extra["flutter.targetSdkVersion"] = flutterTargetSdkVersion
+extra["flutter.compileSdkVersion"] = flutterCompileSdkVersion
+extra["flutter.versionCode"] = flutterVersionCode
+extra["flutter.versionName"] = flutterVersionName
  
 android {
     namespace = "com.example.ai_trading_signals"
-    compileSdk = 34  // Changed from flutter.compileSdkVersion to explicit version
-    ndkVersion = "25.1.8937393"  // Changed from flutter.ndkVersion to explicit version
+    compileSdk = flutterCompileSdkVersion
+    ndkVersion = "25.1.8937393"
  
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -29,10 +41,10 @@ android {
  
     defaultConfig {
         applicationId = "com.example.ai_trading_signals"
-        minSdk = 21  // Changed from flutter.minSdkVersion to explicit version
-        targetSdk = 34  // Changed from flutter.targetSdkVersion to explicit version
-        versionCode = 1  // Changed from flutter.versionCode
-        versionName = "1.0"  // Changed from flutter.versionName
+        minSdk = flutterMinSdkVersion
+        targetSdk = flutterTargetSdkVersion
+        versionCode = flutterVersionCode
+        versionName = flutterVersionName
        
         multiDexEnabled = true
     }
