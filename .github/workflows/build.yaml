@@ -40,11 +40,22 @@ jobs:
     - name: Install dependencies
       run: flutter pub get
     
-    - name: Build APK
-      run: flutter build apk --release
-    
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v3
-      with:
-        name: app-release
-        path: build/app/outputs/flutter-apk/app-release.apk
+   - name: Build APK
+        run: flutter build apk --release
+ 
+   - name: Build AAB
+        run: flutter build appbundle --release
+ 
+   - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai_trading_signals-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
+ 
+   - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai_trading_signals-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
