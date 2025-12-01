@@ -16,7 +16,10 @@ dependencies:
   flutter_dotenv: ^5.1.0
   webfeed: ^0.7.0
   intl: ^0.17.0
+
+dependency_overrides:
   app_links: 6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
