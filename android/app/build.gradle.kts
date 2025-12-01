@@ -26,7 +26,7 @@ extra["flutter.versionCode"] = flutterVersionCode
 extra["flutter.versionName"] = flutterVersionName
  
 android {
-    namespace = "com.example.ai_trading_signals"
+    namespace = "com.FinsparkAIplay.FinsparkAI"
     compileSdk = flutterCompileSdkVersion
     ndkVersion = "25.1.8937393"
  
@@ -80,3 +80,4 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
+
