@@ -1,88 +1,50 @@
-name: Build Android APK and AAB
-
+name: Build Release APK
+ 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
-
+  workflow_dispatch:
+ 
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
-      - name: Show Flutter & Dart version
-        run: |
-          flutter --version
-          dart --version
-
-      - name: Create .env file
-        run: |
-          echo "GROQ_API_KEY=${{ secrets.GROQ_API_KEY }}" > .env
-          echo ".env file created successfully"
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Setup Icon Manually
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y imagemagick
-          
-          mkdir -p android/app/src/main/res/mipmap-hdpi
-          mkdir -p android/app/src/main/res/mipmap-mdpi
-          mkdir -p android/app/src/main/res/mipmap-xhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxhdpi
-          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
-          
-          convert assets/icons/1761905822614.jpg -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-          convert assets/icons/1761905822614.jpg -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-          convert assets/icons/1761905822614.jpg -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-          convert assets/icons/1761905822614.jpg -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          convert assets/icons/1761905822614.jpg -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
-          
-          echo "✅ Icons created successfully"
-          ls -la android/app/src/main/res/mipmap-*/
-
-      - name: Run tests if present
-        run: |
-          if [ -d test ] && [ "$(ls -A test)" ]; then
-            echo "Running tests..."
-            flutter test
-          else
-            echo "No tests found in test/ — skipping flutter test"
-          fi
-
-      - name: Build APK
-        run: flutter build apk --release
-
-      - name: Build AAB
-        run: flutter build appbundle --release
-
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: FinsparkAI-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
-
-      - name: Upload AAB Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: FinsparkAI-aab
-          path: build/app/outputs/bundle/release/app-release.aab
-          if-no-files-found: error
+    - uses: actions/checkout@v3
+    
+    - name: Setup Java
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+    
+    - name: Decode Keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+    
+    - name: Create key.properties
+      run: |
+        cat > android/key.properties << EOF
+        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+        keyPassword=${{ secrets.KEY_PASSWORD }}
+        keyAlias=${{ secrets.KEY_ALIAS }}
+        storeFile=upload-keystore.jks
+        EOF
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Build APK
+      run: flutter build apk --release
+    
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-release
+        path: build/app/outputs/flutter-apk/app-release.apk
