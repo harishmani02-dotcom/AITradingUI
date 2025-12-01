@@ -1,59 +1,59 @@
 name: Build Release APK
- 
+
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
- 
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Setup Java
-      uses: actions/setup-java@v3
-      with:
-        distribution: 'zulu'
-        java-version: '17'
-    
-    - name: Setup Flutter
-      uses: subosito/flutter-action@v2
-      with:
-        flutter-version: '3.24.0'
-        channel: 'stable'
-    
-    - name: Decode Keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-    
-    - name: Create key.properties
-      run: |
-        cat > android/key.properties << EOF
-        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-        keyPassword=${{ secrets.KEY_PASSWORD }}
-        keyAlias=${{ secrets.KEY_ALIAS }}
-        storeFile=upload-keystore.jks
-        EOF
-    
-    - name: Install dependencies
-      run: flutter pub get
-    
-   - name: Build APK
+      - uses: actions/checkout@v3
+
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Create key.properties
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=upload-keystore.jks
+          EOF
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build APK
         run: flutter build apk --release
- 
-   - name: Build AAB
+
+      - name: Build AAB
         run: flutter build appbundle --release
- 
-   - name: Upload APK Artifact
+
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ai_trading_signals-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
- 
-   - name: Upload AAB Artifact
+
+      - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ai_trading_signals-aab
