@@ -12,22 +12,10 @@ val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
-
-val flutterMinSdkVersion = 21
-val flutterTargetSdkVersion = 35
-val flutterCompileSdkVersion = 35
-val flutterVersionCode = 1
-val flutterVersionName = "1.0"
-
-extra["flutter.minSdkVersion"] = flutterMinSdkVersion
-extra["flutter.targetSdkVersion"] = flutterTargetSdkVersion
-extra["flutter.compileSdkVersion"] = flutterCompileSdkVersion
-extra["flutter.versionCode"] = flutterVersionCode
-extra["flutter.versionName"] = flutterVersionName
  
 android {
-    namespace = "com.FinsparkAIplay.FinsparkAI"
-    compileSdk = flutterCompileSdkVersion
+    namespace = "com.FinsparkAIplay.ai_trading_signals"
+    compileSdk = 35
     ndkVersion = "25.1.8937393"
  
     compileOptions {
@@ -40,11 +28,11 @@ android {
     }
  
     defaultConfig {
-        applicationId = "com.FinsparkAIplay.FinsparkAI"
-        minSdk = flutterMinSdkVersion
-        targetSdk = flutterTargetSdkVersion
-        versionCode = flutterVersionCode
-        versionName = flutterVersionName
+        applicationId = "com.FinsparkAIplay.ai_trading_signals"
+        minSdk = 21
+        targetSdk = 35
+        versionCode = 3
+        versionName = "2.0.0"
        
         multiDexEnabled = true
     }
@@ -80,7 +68,3 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
-
-
-
-
