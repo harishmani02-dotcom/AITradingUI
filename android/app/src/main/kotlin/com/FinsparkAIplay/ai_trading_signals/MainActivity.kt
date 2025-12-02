@@ -1,4 +1,4 @@
-package com.example.ai_trading_signals  // Changed from FinsparkAIplay
+package com.FinsparkAIplay.ai_trading_signals
 
 import io.flutter.embedding.android.FlutterActivity
 
