@@ -13,48 +13,23 @@ import 'screens/home_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  String? errorMessage;
-
   try {
-    // Load environment variables FIRST
-    print('Loading .env file...');
+    // Load environment variables
     await dotenv.load(fileName: ".env");
-    print('.env file loaded successfully');
-
-    // Verify environment variables are loaded
-    final url = dotenv.env['SUPABASE_URL'];
-    final key = dotenv.env['SUPABASE_ANON_KEY'];
-    
-    print('SUPABASE_URL is ${url != null && url.isNotEmpty ? "set" : "NOT set"}');
-    print('SUPABASE_ANON_KEY is ${key != null && key.isNotEmpty ? "set" : "NOT set"}');
-
-    if (url == null || url.isEmpty) {
-      throw Exception('SUPABASE_URL is missing in .env file');
-    }
-    
-    if (key == null || key.isEmpty) {
-      throw Exception('SUPABASE_ANON_KEY is missing in .env file');
-    }
 
     // Initialize Supabase
-    print('Initializing Supabase...');
     await Supabase.initialize(
       url: SupabaseConfig.url,
       anonKey: SupabaseConfig.anonKey,
     );
-    print('Supabase initialized successfully');
 
     runApp(const MyApp());
-  } catch (e, stackTrace) {
-    print('ERROR during initialization: $e');
-    print('Stack trace: $stackTrace');
-    errorMessage = e.toString();
-
-    runApp(ErrorApp(error: errorMessage));
+  } catch (e) {
+    // If initialization fails, show error
+    runApp(ErrorApp(error: e.toString()));
   }
 }
 
-// Error screen to show initialization errors
 class ErrorApp extends StatelessWidget {
   final String error;
   const ErrorApp({Key? key, required this.error}) : super(key: key);
@@ -64,54 +39,25 @@ class ErrorApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
-        backgroundColor: Colors.red.shade50,
-        body: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 80,
-                    color: Colors.red,
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Initialization Error',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.red.shade300),
-                    ),
-                    child: Text(
-                      error,
-                      style: const TextStyle(fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Please check:\n'
-                    '• .env file exists in project root\n'
-                    '• .env is listed in pubspec.yaml assets\n'
-                    '• SUPABASE_URL is set correctly\n'
-                    '• SUPABASE_ANON_KEY is set correctly',
-                    style: TextStyle(fontSize: 12, color: Colors.black54),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 80, color: Colors.red),
+                const SizedBox(height: 20),
+                const Text(
+                  'Initialization Error',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  error,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ],
             ),
           ),
         ),
@@ -158,7 +104,6 @@ class AuthWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, _) {
-        // Check if user is logged in
         if (authProvider.isAuthenticated) {
           return const HomeScreen();
         } else {
