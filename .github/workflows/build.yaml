@@ -85,6 +85,12 @@ jobs:
       run: |
         flutter clean
         flutter pub get
+    
+    - name: Generate app icons
+      run: |
+        echo "Generating launcher icons..."
+        dart run flutter_launcher_icons
+        echo "✓ Icons generated"
  
     - name: Build APK
       run: flutter build apk --release --verbose
