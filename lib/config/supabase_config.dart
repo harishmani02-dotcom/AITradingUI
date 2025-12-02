@@ -1,6 +1,19 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 class SupabaseConfig {
- 
-  static const String url = 'https://bqeypsiegeoxzrlxrpee.supabase.co';
-  static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxZXlwc2llZ2VveHpybHhycGVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEyMTg5MTIsImV4cCI6MjA3Njc5NDkxMn0.rgSkURPwqcgjGVUlqlTdvUoQPM7p5MbbAzWkdMjsF4Q';
- 
+  static String get url {
+    final url = dotenv.env['SUPABASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('SUPABASE_URL not found in .env file');
+    }
+    return url;
+  }
+
+  static String get anonKey {
+    final key = dotenv.env['SUPABASE_ANON_KEY'];
+    if (key == null || key.isEmpty) {
+      throw Exception('SUPABASE_ANON_KEY not found in .env file');
+    }
+    return key;
+  }
 }
