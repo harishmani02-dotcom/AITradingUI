@@ -26,23 +26,47 @@ jobs:
         flutter-version: '3.24.0'
         channel: 'stable'
  
+    - name: Verify secrets are set
+      run: |
+        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+          echo "ERROR: SUPABASE_URL secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"
+          exit 1
+        fi
+        echo "✓ Both secrets are set"
+ 
     - name: Create .env file
       run: |
         echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
         echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-        echo "Created .env file"
-        ls -la .env
- 
-    - name: Verify .env content (without exposing secrets)
+        echo "✓ .env file created"
+        
+    - name: Verify .env file
       run: |
-        if [ -f .env ]; then
-          echo ".env file exists"
-          echo "Number of lines: $(wc -l < .env)"
-          # Check if variables are set (without showing values)
-          grep -q "SUPABASE_URL=" .env && echo "✓ SUPABASE_URL is set" || echo "✗ SUPABASE_URL is missing"
-          grep -q "SUPABASE_ANON_KEY=" .env && echo "✓ SUPABASE_ANON_KEY is set" || echo "✗ SUPABASE_ANON_KEY is missing"
+        if [ ! -f .env ]; then
+          echo "ERROR: .env file was not created!"
+          exit 1
+        fi
+        echo "✓ .env file exists"
+        echo "File size: $(wc -c < .env) bytes"
+        if [ $(wc -c < .env) -lt 100 ]; then
+          echo "WARNING: .env file seems too small (less than 100 bytes)!"
+          echo "This might indicate empty secret values."
+        fi
+        # Verify structure without revealing secrets
+        if grep -q "SUPABASE_URL=https://" .env; then
+          echo "✓ SUPABASE_URL has correct format"
         else
-          echo "ERROR: .env file not created!"
+          echo "ERROR: SUPABASE_URL is missing or malformed!"
+          exit 1
+        fi
+        if grep -q "SUPABASE_ANON_KEY=eyJ" .env; then
+          echo "✓ SUPABASE_ANON_KEY has correct format"
+        else
+          echo "ERROR: SUPABASE_ANON_KEY is missing or malformed!"
           exit 1
         fi
  
@@ -62,19 +86,13 @@ jobs:
         flutter clean
         flutter pub get
  
-    - name: Verify assets in pubspec.yaml
-      run: |
-        echo "Checking pubspec.yaml assets configuration:"
-        grep -A 5 "assets:" pubspec.yaml || echo "No assets section found!"
- 
     - name: Build APK
       run: flutter build apk --release --verbose
  
-    - name: Verify APK
+    - name: Verify APK includes .env
       run: |
-        ls -lh build/app/outputs/flutter-apk/app-release.apk
-        # Extract and check if .env is in the APK
-        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep -i "\.env\|assets" || echo "Checking APK contents..."
+        echo "=== Checking if .env is bundled in APK ==="
+        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep "flutter_assets" | grep ".env" || echo "WARNING: .env might not be in APK!"
  
     - name: Upload APK
       uses: actions/upload-artifact@v4
