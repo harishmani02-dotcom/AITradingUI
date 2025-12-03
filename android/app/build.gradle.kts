@@ -14,7 +14,7 @@ if (keystorePropertiesFile.exists()) {
 }
  
 android {
-    namespace = "com.FinsparkAIplay.ai_trading_signals"
+    namespace = "com.FinsparkAIplay.FinsparkAI"
     compileSdk = 35
     ndkVersion = "25.1.8937393"
  
@@ -28,7 +28,7 @@ android {
     }
  
     defaultConfig {
-        applicationId = "com.FinsparkAIplay.ai_trading_signals"
+        applicationId = "com.FinsparkAIplay.FinsparkAI"
         minSdk = 21
         targetSdk = 35
         versionCode = 3
@@ -68,3 +68,4 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
+
