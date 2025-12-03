@@ -28,7 +28,7 @@ android {
     }
  
     defaultConfig {
-        applicationId = "com.FinsparkAIplay.finsparkai.v2"
+        applicationId = "com.FinsparkAIplay.ai_trading_signals.v2"
         minSdk = 21
         targetSdk = 35
         versionCode = 3
@@ -68,5 +68,6 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
+
 
 
