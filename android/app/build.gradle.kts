@@ -37,19 +37,23 @@ android {
         multiDexEnabled = true
     }
  
-    signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties.getProperty("keyAlias")
-            keyPassword = keystoreProperties.getProperty("keyPassword")
-            storeFile = keystoreProperties.getProperty("storeFile")?.let {
-                if (it.startsWith("C:") || it.startsWith("/")) {
-                    file(it)
-                } else {
-                    file("$projectDir/$it")
-                }
-            }
-            storePassword = keystoreProperties.getProperty("storePassword")
+signingConfigs {
+    create("release") {
+        val keystorePropertiesFile = rootProject.file("keystore.properties")
+        if (keystorePropertiesFile.exists()) {
+            val keystoreProperties = Properties()
+            keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+
+            keyAlias = keystoreProperties["keyAlias"] as String
+            keyPassword = keystoreProperties["keyPassword"] as String
+            storeFile = file(keystoreProperties["storeFile"] as String)
+            storePassword = keystoreProperties["storePassword"] as String
+        } else {
+            // Fallback for local development without keystore.properties
+            println("Warning: keystore.properties not found. Release signing will fail.")
         }
+    }
+}
     }
  
     buildTypes {
@@ -68,6 +72,7 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
+
 
 
 
