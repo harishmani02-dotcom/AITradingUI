@@ -134,9 +134,41 @@ jobs:
         dart run flutter_launcher_icons
         echo "✅ Icons generated"
 
+    - name: Debug keystore setup
+      run: |
+        echo "=== Checking keystore.properties ==="
+        cat android/keystore.properties
+        echo ""
+        echo "=== Checking if keystore file exists ==="
+        ls -la android/app/upload-keystore.jks || echo "Keystore file NOT found!"
+        echo ""
+        echo "=== Checking android directory ==="
+        ls -la android/
+
     - name: Build APK
       run: |
-        flutter build apk --release --verbose
+        echo "Starting APK build..."
+        flutter build apk --release --verbose 2>&1 | tee build_log.txt
+        BUILD_EXIT_CODE=${PIPESTATUS[0]}
+        if [ $BUILD_EXIT_CODE -ne 0 ]; then
+          echo "========================================"
+          echo "BUILD FAILED - Showing relevant errors:"
+          echo "========================================"
+          grep -B 5 -A 10 "FAILURE\|ERROR\|Exception\|What went wrong" build_log.txt || tail -100 build_log.txt
+          echo "========================================"
+          echo "Checking for common issues..."
+          echo "========================================"
+          if grep -q "Cannot convert URL" build_log.txt; then
+            echo "❌ ERROR: Keystore path issue detected"
+            echo "Contents of keystore.properties:"
+            cat android/keystore.properties
+          fi
+          if grep -q "keystore" build_log.txt; then
+            echo "❌ ERROR: Keystore-related issue"
+            ls -la android/app/ | grep keystore || echo "No keystore files found"
+          fi
+          exit $BUILD_EXIT_CODE
+        fi
         echo "✅ APK built successfully"
 
     - name: Verify APK was created
