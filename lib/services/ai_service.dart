@@ -1,6 +1,9 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+ 
 class AIService {
+  // Get API key from .env file
+  static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
   // Get API key from compile-time environment variable (dart-define)
   static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
 
