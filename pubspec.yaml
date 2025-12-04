@@ -21,6 +21,12 @@ dependencies:
   flutter_dotenv: ^5.1.0
   webfeed: ^0.7.0
   intl: ^0.17.0
+
+- name: Build APK with secrets
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        flutter build apk --release --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY
  
 dependency_overrides:
   app_links: 6.3.2
@@ -47,4 +53,5 @@ flutter:
   assets:
     - .env
     - assets/icons/
+
 
