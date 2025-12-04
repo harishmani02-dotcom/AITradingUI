@@ -1,13 +1,9 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:flutter_dotenv/flutter_dotenv.dart';
- 
+import 'package:google_generative_ai/google_generative_ai.dart';
+
 class AIService {
-  static const String _baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  
-  // Get API key from .env file
-  static String get _apiKey => dotenv.env['GROQ_API_KEY'] ?? '';
- 
+  // Get API key from compile-time environment variable (dart-define)
+  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
+
   // System prompt to make AI act as a trading assistant
   static const String _systemPrompt = '''You are an expert Indian stock market trading assistant with deep knowledge of:
 - NSE and BSE stocks
@@ -15,66 +11,50 @@ class AIService {
 - Fundamental analysis
 - Market trends and sentiment
 - Indian stock market regulations
- 
+
 Provide clear, concise, and actionable insights. Use emojis appropriately. 
 When discussing stocks, mention current price levels, support/resistance, and trends.
 Always remind users to do their own research and that this is not financial advice.
 Keep responses focused on Indian stock market (NIFTY, BANKNIFTY, major stocks like TCS, RELIANCE, INFY, HDFC, etc.)''';
- 
+
   /// Send message to AI and get response
   static Future<String> getAIResponse(String userMessage) async {
     try {
       // Validate API key
-      if (_apiKey.isEmpty || _apiKey == 'your_groq_api_key_here') {
-        return '⚠️ API key not configured!\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a FREE API key\n3. Add it to your .env file:\nGROQ_API_KEY=gsk_your_key_here';
+      if (_apiKey.isEmpty) {
+        return '⚠️ API key not configured!\n\nThe app was not built with an API key.\n\nDevelopers: Build with:\nflutter run --dart-define=GEMINI_API_KEY=your_key';
       }
- 
-      final response = await http.post(
-        Uri.parse(_baseUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_apiKey',
-        },
-        body: jsonEncode({
-          'model': 'llama-3.3-70b-versatile', // UPDATED MODEL - Currently supported
-          'messages': [
-            {
-              'role': 'system',
-              'content': _systemPrompt,
-            },
-            {
-              'role': 'user',
-              'content': userMessage,
-            }
-          ],
-          'temperature': 0.7,
-          'max_tokens': 1024,
-          'top_p': 1,
-          'stream': false,
-        }),
+
+      // Initialize the Gemini model
+      final model = GenerativeModel(
+        model: 'gemini-2.0-flash-exp',
+        apiKey: _apiKey,
+        systemInstruction: Content.system(_systemPrompt),
       );
- 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final aiMessage = data['choices'][0]['message']['content'];
-        return aiMessage.trim();
-      } else if (response.statusCode == 401) {
-        return '🔑 Invalid API key!\n\nYour API key is incorrect.\n\nSteps to fix:\n1. Go to https://console.groq.com/keys\n2. Create a new API key\n3. Update your .env file:\nGROQ_API_KEY=gsk_your_new_key';
-      } else if (response.statusCode == 400) {
-        final errorData = jsonDecode(response.body);
-        final errorMessage = errorData['error']?['message'] ?? 'Bad request';
-        return '❌ API Error 400:\n$errorMessage\n\nPlease check:\n1. API key is correct\n2. Model name is valid\n3. Request format is correct';
-      } else if (response.statusCode == 429) {
-        return '⏳ Rate limit exceeded!\n\nToo many requests. Please wait a moment and try again.';
+
+      // Generate response
+      final content = Content.text(userMessage);
+      final response = await model.generateContent([content]);
+
+      if (response.text != null && response.text!.isNotEmpty) {
+        return response.text!.trim();
       } else {
-        return '❌ Error ${response.statusCode}\n\nResponse: ${response.body}\n\nPlease try again or contact support.';
+        return '❌ Empty response from AI. Please try again.';
       }
     } catch (e) {
-      if (e.toString().contains('SocketException') || e.toString().contains('HandshakeException')) {
+      // Handle specific errors
+      if (e.toString().contains('API_KEY_INVALID') || 
+          e.toString().contains('invalid api key')) {
+        return '🔑 Invalid API key!\n\nThe Gemini API key is incorrect or expired.\n\nPlease contact the developer.';
+      } else if (e.toString().contains('RESOURCE_EXHAUSTED') || 
+                 e.toString().contains('quota')) {
+        return '⏳ Rate limit exceeded!\n\nYou\'ve hit the free tier quota. Please wait a moment and try again.';
+      } else if (e.toString().contains('SocketException') || 
+                 e.toString().contains('network')) {
         return '📡 No internet connection.\n\nPlease check:\n1. WiFi/Mobile data is ON\n2. Internet is working\n3. Try again';
+      } else {
+        return '❌ Unexpected Error:\n${e.toString()}\n\nPlease try again.';
       }
-      return '❌ Unexpected Error:\n${e.toString()}\n\nPlease try again.';
     }
   }
 }
- 
