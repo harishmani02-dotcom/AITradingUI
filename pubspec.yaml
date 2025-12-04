@@ -7,7 +7,7 @@ environment:
   sdk: '>=3.5.0 <4.0.0'
   flutter: ">=3.24.0"
  
-dependencies:
+ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.5
@@ -23,9 +23,9 @@ dependencies:
   intl: ^0.17.0
   google_generative_ai: ^0.4.0
 
-  env:
-      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-      run: |
+env:
+  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    run: |
         flutter build apk --release --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY
  
  dependency_overrides:
@@ -53,6 +53,7 @@ flutter:
   assets:
     - .env
     - assets/icons/
+
 
 
 
