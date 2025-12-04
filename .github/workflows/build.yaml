@@ -85,10 +85,10 @@ jobs:
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
     - name: Create keystore.properties
       run: |
-       echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/keystore.properties
-       echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/keystore.properties
-       echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/keystore.properties
-      echo "storeFile=app/upload-keystore.jks" >> android/keystore.properties
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/keystore.properties
+        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/keystore.properties
+        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/keystore.properties
+        echo "storeFile=app/upload-keystore.jks" >> android/keystore.properties
     - name: Clean and get dependencies
       run: |
         flutter clean
