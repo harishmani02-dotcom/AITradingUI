@@ -1,4 +1,4 @@
-name: Build Android APK & AAB (Auto Recreate Android + Kotlin DSL Convert)
+name: Android Build CI
 
 on:
   push:
@@ -9,161 +9,106 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
 
     steps:
-    - name: Checkout Code
+    # -----------------------------
+    # Checkout Project
+    # -----------------------------
+    - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup Java 17
+    # -----------------------------
+    # Java 17 Required for Android
+    # -----------------------------
+    - name: Setup Java
       uses: actions/setup-java@v4
       with:
-        distribution: 'zulu'
-        java-version: '17'
+        distribution: "zulu"
+        java-version: "17"
 
+    # -----------------------------
+    # Install Flutter
+    # -----------------------------
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: "3.24.0"
         channel: "stable"
-        cache: true
 
-    # ==========================================================
-    # Secret Validation
-    # ==========================================================
-    - name: Verify secrets
+    # -----------------------------
+    # Validate Required Secrets
+    # -----------------------------
+    - name: Verify Secrets
       run: |
-        for S in SUPABASE_URL SUPABASE_ANON_KEY GEMINI_API_KEY KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
-          if [ -z "${{ secrets[$S] }}" ]; then echo "❌ Missing $S"; exit 1; fi
-        done
-        echo "✓ All secrets present"
+        [ -n "${{ secrets.SUPABASE_URL }}" ] || (echo "❌ SUPABASE_URL missing" && exit 1)
+        [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ] || (echo "❌ SUPABASE_ANON_KEY missing" && exit 1)
+        [ -n "${{ secrets.GEMINI_API_KEY }}" ] || (echo "❌ GEMINI_API_KEY missing" && exit 1)
+        [ -n "${{ secrets.KEYSTORE_BASE64 }}" ] || (echo "❌ KEYSTORE_BASE64 missing" && exit 1)
+        [ -n "${{ secrets.KEYSTORE_PASSWORD }}" ] || (echo "❌ KEYSTORE_PASSWORD missing" && exit 1)
+        [ -n "${{ secrets.KEY_ALIAS }}" ] || (echo "❌ KEY_ALIAS missing" && exit 1)
+        [ -n "${{ secrets.KEY_PASSWORD }}" ] || (echo "❌ KEY_PASSWORD missing" && exit 1)
+        echo "✅ All Secrets Present"
 
-    # ==========================================================
-    # BACKUP
-    # ==========================================================
-    - name: Backup Android Manifest & Res
-      run: |
-        mkdir -p /tmp/android_backup
-        [ -f android/app/src/main/AndroidManifest.xml ] && cp android/app/src/main/AndroidManifest.xml /tmp/android_backup/
-        [ -d android/app/src/main/res ] && cp -r android/app/src/main/res /tmp/android_backup/
-
-    # ==========================================================
-    # DELETE & RECREATE ANDROID
-    # ==========================================================
-    - name: Recreate android folder
-      run: |
-        rm -rf android/
-        flutter create --org com.example --project-name finsparkai --platforms=android .
-        echo "✓ Fresh Android generated"
-
-    # ==========================================================
-    # RESTORE CUSTOM FILES
-    # ==========================================================
-    - name: Restore Manifest & Res
-      run: |
-        if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
-          cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          sed -i 's/package="[^"]*"/package="com.example.finsparkai"/' android/app/src/main/AndroidManifest.xml
-        fi
-        [ -d /tmp/android_backup/res ] && cp -r /tmp/android_backup/res/* android/app/src/main/res/ || true
-
-    # ==========================================================
-    # BUILD.GRADLE.KTS AUTO CONVERSION
-    # ==========================================================
-    - name: Generate Kotlin DSL build.gradle.kts
-      run: |
-        printf '%s\n' \
-        'plugins {' \
-        '    id("com.android.application")' \
-        '    id("kotlin-android")' \
-        '    id("dev.flutter.flutter-gradle-plugin")' \
-        '}' \
-        '' \
-        'val keystorePropertiesFile = rootProject.file("key.properties")' \
-        'val keystoreProperties = java.util.Properties()' \
-        'if (keystorePropertiesFile.exists()) keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))' \
-        '' \
-        'android {' \
-        '    namespace = "com.example.finsparkai"' \
-        '    compileSdk = flutter.compileSdkVersion' \
-        '    ndkVersion = flutter.ndkVersion' \
-        '' \
-        '    defaultConfig {' \
-        '        applicationId = "com.example.finsparkai"' \
-        '        minSdk = flutter.minSdkVersion' \
-        '        targetSdk = flutter.targetSdkVersion' \
-        '        versionCode = flutter.versionCode' \
-        '        versionName = flutter.versionName' \
-        '    }' \
-        '' \
-        '    signingConfigs {' \
-        '        create("release") {' \
-        '            if (keystorePropertiesFile.exists()) {' \
-        '                keyAlias = keystoreProperties["keyAlias"] as String' \
-        '                keyPassword = keystoreProperties["keyPassword"] as String' \
-        '                storeFile = file(keystoreProperties["storeFile"] as String)' \
-        '                storePassword = keystoreProperties["storePassword"] as String' \
-        '            }' \
-        '        }' \
-        '    }' \
-        '' \
-        '    buildTypes {' \
-        '        release {' \
-        '            signingConfig = signingConfigs.getByName("release")' \
-        '            isMinifyEnabled = false' \
-        '        }' \
-        '    }' \
-        '}' \
-        '' \
-        'flutter { source = "../.." }' \
-        '' \
-        'dependencies {}' \
-        > android/app/build.gradle.kts
-
-        rm -f android/app/build.gradle
-        echo "✓ Kotlin DSL created"
-
-    # ==========================================================
-    # ENV + KEYSTORE
-    # ==========================================================
-    - name: Create .env
+    # -----------------------------
+    # Create .env
+    # -----------------------------
+    - name: Create .env file
       run: |
         echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
         echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
         echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+        echo "✓ .env created"
 
+    # -----------------------------
+    # Keystore Setup
+    # -----------------------------
     - name: Decode Keystore
       run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
-    - name: key.properties
+    - name: Create key.properties
       run: |
         echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
         echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
         echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
         echo "storeFile=upload-keystore.jks" >> android/key.properties
+        cat android/key.properties
 
-    # ==========================================================
-    # BUILD PROCESS
-    # ==========================================================
-    - run: flutter clean
-    - run: flutter pub get
-    - run: dart run flutter_launcher_icons
+    # -----------------------------
+    # Flutter Dependencies + Icons
+    # -----------------------------
+    - name: Install packages
+      run: |
+        flutter clean
+        flutter pub get
 
+    - name: Generate Icons
+      run: dart run flutter_launcher_icons || echo "⚠ Icons not configured – ignoring"
+
+    # -----------------------------
+    # Build APK
+    # -----------------------------
     - name: Build APK
-      run: flutter build apk --release --verbose
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: flutter build apk --release --dart-define=GEMINI_API_KEY=$GEMINI_API_KEY
 
+    # -----------------------------
+    # Build AAB
+    # -----------------------------
     - name: Build AAB
       run: flutter build appbundle --release
 
-    # ==========================================================
-    # ARTIFACT EXPORT
-    # ==========================================================
-    - uses: actions/upload-artifact@v4
+    # -----------------------------
+    # Upload Artifacts
+    # -----------------------------
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
       with:
-        name: apk-release
+        name: app-release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
 
-    - uses: actions/upload-artifact@v4
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
       with:
-        name: aab-release
+        name: app-release-aab
         path: build/app/outputs/bundle/release/app-release.aab
