@@ -81,9 +81,92 @@ jobs:
           exit 1  
         fi  
 
+    - name: Display current Gradle files (for debugging)
+      run: |
+        echo "=== Current Android structure ==="
+        ls -la android/
+        echo ""
+        echo "=== Current app/build.gradle.kts content ==="
+        if [ -f android/app/build.gradle.kts ]; then
+          cat android/app/build.gradle.kts
+        else
+          echo "app/build.gradle.kts not found"
+        fi
+        echo ""
+        echo "=== Current build.gradle.kts content ==="
+        if [ -f android/build.gradle.kts ]; then
+          cat android/build.gradle.kts
+        else
+          echo "build.gradle.kts not found"
+        fi
+        echo ""
+        echo "=== Current settings.gradle.kts content ==="
+        if [ -f android/settings.gradle.kts ]; then
+          cat android/settings.gradle.kts
+        else
+          echo "settings.gradle.kts not found"
+        fi
+
+    - name: Backup custom Android files
+      run: |
+        echo "=== Backing up custom files ==="
+        mkdir -p /tmp/android_backup
+        
+        # Backup AndroidManifest if it has custom content
+        if [ -f android/app/src/main/AndroidManifest.xml ]; then
+          cp android/app/src/main/AndroidManifest.xml /tmp/android_backup/
+          echo "✓ Backed up AndroidManifest.xml"
+        fi
+        
+        # Backup any custom drawables/resources
+        if [ -d android/app/src/main/res ]; then
+          cp -r android/app/src/main/res /tmp/android_backup/
+          echo "✓ Backed up res folder"
+        fi
+        
+        # Backup kotlin files if any
+        if [ -d android/app/src/main/kotlin ]; then
+          cp -r android/app/src/main/kotlin /tmp/android_backup/
+          echo "✓ Backed up kotlin folder"
+        fi
+
+    - name: Delete and recreate Android folder
+      run: |
+        echo "=== Removing old Android folder ==="
+        rm -rf android/
+        echo "✓ Android folder removed"
+        
+        echo "=== Creating new Android project ==="
+        flutter create --platforms=android --org com.example --project-name ai_trading_signals .
+        echo "✓ New Android project created"
+
+    - name: Restore custom Android files
+      run: |
+        echo "=== Restoring custom files ==="
+        
+        # Restore AndroidManifest if we backed it up
+        if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
+          cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          echo "✓ Restored AndroidManifest.xml"
+        fi
+        
+        # Restore resources if we backed them up
+        if [ -d /tmp/android_backup/res ]; then
+          cp -r /tmp/android_backup/res/* android/app/src/main/res/ 2>/dev/null || true
+          echo "✓ Restored res folder"
+        fi
+        
+        # Restore kotlin files if we backed them up
+        if [ -d /tmp/android_backup/kotlin ]; then
+          mkdir -p android/app/src/main/kotlin
+          cp -r /tmp/android_backup/kotlin/* android/app/src/main/kotlin/
+          echo "✓ Restored kotlin folder"
+        fi
+
     - name: Decode keystore  
       run: |  
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks  
+        echo "✓ Keystore decoded"
 
     - name: Create key.properties  
       run: |  
@@ -91,23 +174,36 @@ jobs:
         echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties  
         echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties  
         echo "storeFile=upload-keystore.jks" >> android/key.properties  
+        echo "✓ key.properties created"
 
-    - name: Migrate Android project to new format
+    - name: Update app/build.gradle for signing
       run: |
-        echo "=== Migrating Android project to supported format ==="
-        cd android
-        flutter create --platforms=android --org com.example --project-name ai_trading_signals .
-        cd ..
-        echo "✓ Android project migrated"
+        cat >> android/app/build.gradle << 'EOF'
 
-    - name: Restore keystore and properties after migration
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
-        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-        echo "storeFile=upload-keystore.jks" >> android/key.properties
-        echo "✓ Keystore and properties restored"
+// Load keystore properties
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+    
+    android {
+        signingConfigs {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
+        }
+        buildTypes {
+            release {
+                signingConfig signingConfigs.release
+            }
+        }
+    }
+}
+EOF
+        echo "✓ Signing configuration added to build.gradle"
 
     - name: Clean and get dependencies  
       run: |  
