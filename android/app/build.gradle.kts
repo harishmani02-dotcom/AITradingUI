@@ -12,7 +12,6 @@ if (localPropertiesFile.exists()) {
 
 val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toIntOrNull() ?: 1
 val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
-val kotlinVersion = rootProject.extra["kotlin_version"] as String
 
 android {
     namespace = "com.example.aitrading"
@@ -54,5 +53,5 @@ flutter {
 }
 
 dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion")
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0")
 }
