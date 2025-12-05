@@ -5,7 +5,7 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch: # Allow manual triggering
+  workflow_dispatch:
 
 jobs:
   build:
@@ -29,191 +29,157 @@ jobs:
         channel: 'stable'
         cache: true
 
-    ############################################
-    # Verify All Required Secrets
-    ############################################
     - name: Verify Required Secrets
       run: |
-        echo "🔍 Checking required secrets..."
+        echo "Checking required secrets..."
         MISSING=""
-        
-        [ -z "${{ secrets.SUPABASE_URL }}" ] && MISSING="$MISSING SUPABASE_URL"
-        [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ] && MISSING="$MISSING SUPABASE_ANON_KEY"
-        [ -z "${{ secrets.GEMINI_API_KEY }}" ] && MISSING="$MISSING GEMINI_API_KEY"
-        [ -z "${{ secrets.KEYSTORE_BASE64 }}" ] && MISSING="$MISSING KEYSTORE_BASE64"
-        [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ] && MISSING="$MISSING KEYSTORE_PASSWORD"
-        [ -z "${{ secrets.KEY_ALIAS }}" ] && MISSING="$MISSING KEY_ALIAS"
-        [ -z "${{ secrets.KEY_PASSWORD }}" ] && MISSING="$MISSING KEY_PASSWORD"
-        
+        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then MISSING="$MISSING SUPABASE_URL"; fi
+        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then MISSING="$MISSING SUPABASE_ANON_KEY"; fi
+        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then MISSING="$MISSING GEMINI_API_KEY"; fi
+        if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then MISSING="$MISSING KEYSTORE_BASE64"; fi
+        if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then MISSING="$MISSING KEYSTORE_PASSWORD"; fi
+        if [ -z "${{ secrets.KEY_ALIAS }}" ]; then MISSING="$MISSING KEY_ALIAS"; fi
+        if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then MISSING="$MISSING KEY_PASSWORD"; fi
         if [ ! -z "$MISSING" ]; then
-          echo "❌ Missing secrets:$MISSING"
+          echo "Missing secrets:$MISSING"
           exit 1
         fi
-        
-        echo "✅ All required secrets are configured"
+        echo "All required secrets are configured"
 
-    ############################################
-    # Update Gradle Configuration Files
-    ############################################
     - name: Update settings.gradle.kts
       run: |
         cat > android/settings.gradle.kts << 'EOF'
-pluginManagement {
-    val flutterSdkPath: String = run {
-        val properties = java.util.Properties()
-        val localPropertiesFile = file("local.properties")
-        if (localPropertiesFile.exists()) {
-            properties.load(java.io.FileInputStream(localPropertiesFile))
+        pluginManagement {
+            val flutterSdkPath: String = run {
+                val properties = java.util.Properties()
+                val localPropertiesFile = file("local.properties")
+                if (localPropertiesFile.exists()) {
+                    properties.load(java.io.FileInputStream(localPropertiesFile))
+                }
+                val path = properties.getProperty("flutter.sdk")
+                requireNotNull(path) { "flutter.sdk not set in local.properties" }
+                path
+            }
+            includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
+            repositories {
+                google()
+                mavenCentral()
+                gradlePluginPortal()
+            }
         }
-        val path = properties.getProperty("flutter.sdk")
-        requireNotNull(path) { "flutter.sdk not set in local.properties" }
-        path
-    }
-
-    includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
-
-    repositories {
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-
-plugins {
-    id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-}
-
-include(":app")
-EOF
+        plugins {
+            id("dev.flutter.flutter-plugin-loader") version "1.0.0"
+        }
+        include(":app")
+        EOF
 
     - name: Update build.gradle.kts
       run: |
         cat > android/build.gradle.kts << 'EOF'
-buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.1.0")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
-    }
-}
-
-allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-}
-
-tasks.register<Delete>("clean") {
-    delete(rootProject.buildDir)
-}
-EOF
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath("com.android.tools.build:gradle:8.1.0")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
+            }
+        }
+        allprojects {
+            repositories {
+                google()
+                mavenCentral()
+            }
+        }
+        tasks.register<Delete>("clean") {
+            delete(rootProject.buildDir)
+        }
+        EOF
 
     - name: Update app/build.gradle.kts
       run: |
         cat > android/app/build.gradle.kts << 'EOF'
-import java.util.Properties
-import java.io.FileInputStream
-
-plugins {
-    id("com.android.application")
-    id("kotlin-android")
-    id("dev.flutter.flutter-gradle-plugin")
-}
-
-val localProperties = Properties()
-val localPropertiesFile = rootProject.file("local.properties")
-if (localPropertiesFile.exists()) {
-    localProperties.load(FileInputStream(localPropertiesFile))
-}
-
-val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toIntOrNull() ?: 1
-val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
-
-android {
-    namespace = "com.finspark.ai"
-    compileSdk = 34
-    ndkVersion = "25.1.8937393"
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
-
-    sourceSets {
-        getByName("main") {
-            java.srcDir("src/main/kotlin")
+        import java.util.Properties
+        import java.io.FileInputStream
+        plugins {
+            id("com.android.application")
+            id("kotlin-android")
+            id("dev.flutter.flutter-gradle-plugin")
         }
-    }
-
-    defaultConfig {
-        applicationId = "com.finspark.ai"
-        minSdk = 21
-        targetSdk = 34
-        versionCode = flutterVersionCode
-        versionName = flutterVersionName
-    }
-
-    signingConfigs {
-        create("release") {
-            storeFile = file("upload-keystore.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD")
-            keyAlias = System.getenv("KEY_ALIAS")
-            keyPassword = System.getenv("KEY_PASSWORD")
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(FileInputStream(localPropertiesFile))
         }
-    }
-
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
+        val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toIntOrNull() ?: 1
+        val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
+        android {
+            namespace = "com.finspark.ai"
+            compileSdk = 34
+            ndkVersion = "25.1.8937393"
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_17
+                targetCompatibility = JavaVersion.VERSION_17
+            }
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+            sourceSets {
+                getByName("main") {
+                    java.srcDir("src/main/kotlin")
+                }
+            }
+            defaultConfig {
+                applicationId = "com.finspark.ai"
+                minSdk = 21
+                targetSdk = 34
+                versionCode = flutterVersionCode
+                versionName = flutterVersionName
+            }
+            signingConfigs {
+                create("release") {
+                    storeFile = file("upload-keystore.jks")
+                    storePassword = System.getenv("KEYSTORE_PASSWORD")
+                    keyAlias = System.getenv("KEY_ALIAS")
+                    keyPassword = System.getenv("KEY_PASSWORD")
+                }
+            }
+            buildTypes {
+                release {
+                    signingConfig = signingConfigs.getByName("release")
+                    isMinifyEnabled = true
+                    isShrinkResources = true
+                    proguardFiles(
+                        getDefaultProguardFile("proguard-android-optimize.txt"),
+                        "proguard-rules.pro"
+                    )
+                }
+            }
         }
-    }
-}
-
-flutter {
-    source = "../.."
-}
-
-dependencies {
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0")
-}
-EOF
+        flutter {
+            source = "../.."
+        }
+        dependencies {
+            implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0")
+        }
+        EOF
 
     - name: Update gradle-wrapper.properties
       run: |
         cat > android/gradle/wrapper/gradle-wrapper.properties << 'EOF'
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip
-EOF
+        distributionBase=GRADLE_USER_HOME
+        distributionPath=wrapper/dists
+        zipStoreBase=GRADLE_USER_HOME
+        zipStorePath=wrapper/dists
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip
+        EOF
 
-    ############################################
-    # Decode Keystore for Release Signing
-    ############################################
     - name: Decode Keystore
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-        echo "✅ Keystore decoded successfully"
+        echo "Keystore decoded successfully"
 
-    ############################################
-    # Create .env file (if using dotenv locally)
-    ############################################
     - name: Create .env file
       run: |
         cat > .env << EOF
@@ -221,24 +187,18 @@ EOF
         SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
         GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
         EOF
-        echo "✅ Environment file created"
+        echo "Environment file created"
 
-    ############################################
-    # Get Dependencies & Clean
-    ############################################
     - name: Get Flutter Dependencies
       run: |
         flutter --version
         flutter pub get
-        echo "✅ Dependencies installed"
+        echo "Dependencies installed"
 
     - name: Clean Flutter Build
       run: flutter clean
 
-    ############################################
-    # Build APK with dart-define
-    ############################################
-    - name: Build APK (Release)
+    - name: Build APK
       run: |
         flutter build apk --release \
           --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
@@ -249,10 +209,7 @@ EOF
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-    ############################################
-    # Build AAB with dart-define
-    ############################################
-    - name: Build AAB (Release)
+    - name: Build AAB
       run: |
         flutter build appbundle --release \
           --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
@@ -263,31 +220,25 @@ EOF
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-    ############################################
-    # Upload Build Artifacts
-    ############################################
-    - name: Upload APK Artifact
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: FinsparkAI-APK-${{ github.run_number }}
+        name: FinsparkAI-APK
         path: build/app/outputs/flutter-apk/app-release.apk
         retention-days: 30
 
-    - name: Upload AAB Artifact
+    - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: FinsparkAI-AAB-${{ github.run_number }}
+        name: FinsparkAI-AAB
         path: build/app/outputs/bundle/release/app-release.aab
         retention-days: 30
 
-    ############################################
-    # Build Summary
-    ############################################
     - name: Build Summary
       if: success()
       run: |
-        echo "🎉 Build completed successfully!"
-        echo "📦 APK: build/app/outputs/flutter-apk/app-release.apk"
-        echo "📦 AAB: build/app/outputs/bundle/release/app-release.aab"
-        ls -lh build/app/outputs/flutter-apk/app-release.apk
-        ls -lh build/app/outputs/bundle/release/app-release.aab
+        echo "Build completed successfully!"
+        echo "APK: build/app/outputs/flutter-apk/app-release.apk"
+        echo "AAB: build/app/outputs/bundle/release/app-release.aab"
+        ls -lh build/app/outputs/flutter-apk/app-release.apk || true
+        ls -lh build/app/outputs/bundle/release/app-release.aab || true
