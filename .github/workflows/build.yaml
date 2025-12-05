@@ -83,7 +83,8 @@ jobs:
         rm -rf android/
         
         echo "=== Creating new Android project ==="
-        flutter create --platforms=android .
+        # Use the package name from pubspec.yaml (finsparkAI -> finsparkai)
+        flutter create --org com.example --project-name finsparkai --platforms=android .
         echo "✓ Android folder recreated with modern structure"
 
     - name: Restore Android customizations
@@ -104,8 +105,8 @@ jobs:
 
     - name: Update package name in build.gradle.kts
       run: |
-        # Extract package name from AndroidManifest
-        PACKAGE_NAME=$(grep -oP 'package="\K[^"]+' android/app/src/main/AndroidManifest.xml || echo "com.example.finsparkAI")
+        # Use the correct package name based on pubspec.yaml
+        PACKAGE_NAME="com.example.finsparkai"
         echo "Package name: $PACKAGE_NAME"
         
         # Update namespace and applicationId in build.gradle.kts
