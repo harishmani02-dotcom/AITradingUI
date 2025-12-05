@@ -94,7 +94,9 @@ jobs:
         # Restore AndroidManifest
         if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
           cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          echo "✓ Restored AndroidManifest.xml"
+          # Update package name in AndroidManifest
+          sed -i 's/package="[^"]*"/package="com.example.finsparkai"/' android/app/src/main/AndroidManifest.xml
+          echo "✓ Restored and updated AndroidManifest.xml"
         fi
         
         # Restore resources
