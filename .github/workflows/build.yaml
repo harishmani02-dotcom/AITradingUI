@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK & AAB (Auto Recreate Android + Kotlin DSL Convert)
 
 on:
   push:
@@ -9,13 +9,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-   
+    timeout-minutes: 35
+
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v4
 
-    - name: Setup Java
+    - name: Setup Java 17
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
@@ -24,268 +24,146 @@ jobs:
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0'
-        channel: 'stable'
+        flutter-version: "3.24.0"
+        channel: "stable"
         cache: true
 
-    - name: Verify secrets are set
+    # ==========================================================
+    # Secret Validation
+    # ==========================================================
+    - name: Verify secrets
       run: |
-        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-          echo "ERROR: SUPABASE_URL secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
-          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
-          echo "ERROR: GEMINI_API_KEY secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-          echo "ERROR: KEYSTORE_BASE64 secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
-          echo "ERROR: KEYSTORE_PASSWORD secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
-          echo "ERROR: KEY_ALIAS secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
-          echo "ERROR: KEY_PASSWORD secret is not set!"
-          exit 1
-        fi
-        echo "✅ All secrets are set"
+        for S in SUPABASE_URL SUPABASE_ANON_KEY GEMINI_API_KEY KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+          if [ -z "${{ secrets[$S] }}" ]; then echo "❌ Missing $S"; exit 1; fi
+        done
+        echo "✓ All secrets present"
 
-    - name: Backup current Android customizations
+    # ==========================================================
+    # BACKUP
+    # ==========================================================
+    - name: Backup Android Manifest & Res
       run: |
-        echo "=== Backing up custom files ==="
         mkdir -p /tmp/android_backup
-        
-        # Backup AndroidManifest
-        if [ -f android/app/src/main/AndroidManifest.xml ]; then
-          cp android/app/src/main/AndroidManifest.xml /tmp/android_backup/
-          echo "✓ Backed up AndroidManifest.xml"
-        fi
-        
-        # Backup resources
-        if [ -d android/app/src/main/res ]; then
-          cp -r android/app/src/main/res /tmp/android_backup/
-          echo "✓ Backed up res folder"
-        fi
+        [ -f android/app/src/main/AndroidManifest.xml ] && cp android/app/src/main/AndroidManifest.xml /tmp/android_backup/
+        [ -d android/app/src/main/res ] && cp -r android/app/src/main/res /tmp/android_backup/
 
-    - name: Recreate Android folder with supported structure
+    # ==========================================================
+    # DELETE & RECREATE ANDROID
+    # ==========================================================
+    - name: Recreate android folder
       run: |
-        echo "=== Removing old Android folder ==="
         rm -rf android/
-        
-        echo "=== Creating new Android project ==="
         flutter create --org com.example --project-name finsparkai --platforms=android .
-        echo "✓ Android folder recreated with modern structure"
+        echo "✓ Fresh Android generated"
 
-    - name: Restore Android customizations
+    # ==========================================================
+    # RESTORE CUSTOM FILES
+    # ==========================================================
+    - name: Restore Manifest & Res
       run: |
-        echo "=== Restoring custom files ==="
-        
-        # Restore AndroidManifest
         if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
           cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
           sed -i 's/package="[^"]*"/package="com.example.finsparkai"/' android/app/src/main/AndroidManifest.xml
-          echo "✓ Restored and updated AndroidManifest.xml"
         fi
-        
-        # Restore resources
-        if [ -d /tmp/android_backup/res ]; then
-          cp -r /tmp/android_backup/res/* android/app/src/main/res/ 2>/dev/null || true
-          echo "✓ Restored res folder"
-        fi
+        [ -d /tmp/android_backup/res ] && cp -r /tmp/android_backup/res/* android/app/src/main/res/ || true
 
-    - name: Convert to Kotlin DSL and update package name
+    # ==========================================================
+    # BUILD.GRADLE.KTS AUTO CONVERSION
+    # ==========================================================
+    - name: Generate Kotlin DSL build.gradle.kts
       run: |
-        echo "=== Checking build file type ==="
-        ls -la android/app/ | grep build.gradle || true
-        
-        PACKAGE_NAME="com.example.finsparkai"
-        
-        # Always create a fresh Kotlin DSL file with signing built-in
-        echo "Creating complete build.gradle.kts with signing configuration"
-        
         printf '%s\n' \
-          'plugins {' \
-          '    id("com.android.application")' \
-          '    id("kotlin-android")' \
-          '    id("dev.flutter.flutter-gradle-plugin")' \
-          '}' \
-          '' \
-          '// Load keystore properties' \
-          'val keystorePropertiesFile = rootProject.file("key.properties")' \
-          'val keystoreProperties = java.util.Properties()' \
-          'if (keystorePropertiesFile.exists()) {' \
-          '    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))' \
-          '}' \
-          '' \
-          'android {' \
-          '    namespace = "com.example.finsparkai"' \
-          '    compileSdk = flutter.compileSdkVersion' \
-          '    ndkVersion = flutter.ndkVersion' \
-          '' \
-          '    compileOptions {' \
-          '        sourceCompatibility = JavaVersion.VERSION_1_8' \
-          '        targetCompatibility = JavaVersion.VERSION_1_8' \
-          '    }' \
-          '' \
-          '    kotlinOptions {' \
-          '        jvmTarget = "1.8"' \
-          '    }' \
-          '' \
-          '    defaultConfig {' \
-          '        applicationId = "com.example.finsparkai"' \
-          '        minSdk = flutter.minSdkVersion' \
-          '        targetSdk = flutter.targetSdkVersion' \
-          '        versionCode = flutter.versionCode' \
-          '        versionName = flutter.versionName' \
-          '    }' \
-          '' \
-          '    signingConfigs {' \
-          '        create("release") {' \
-          '            if (keystorePropertiesFile.exists()) {' \
-          '                keyAlias = keystoreProperties["keyAlias"] as String' \
-          '                keyPassword = keystoreProperties["keyPassword"] as String' \
-          '                storeFile = file(keystoreProperties["storeFile"] as String)' \
-          '                storePassword = keystoreProperties["storePassword"] as String' \
-          '            }' \
-          '        }' \
-          '    }' \
-          '' \
-          '    buildTypes {' \
-          '        release {' \
-          '            signingConfig = signingConfigs.getByName("release")' \
-          '        }' \
-          '    }' \
-          '}' \
-          '' \
-          'flutter {' \
-          '    source = "../.."' \
-          '}' \
-          '' \
-          'dependencies {}' \
-          > android/app/build.gradle.kts
-        
-        # Remove old Groovy file if it exists
-        rm -f android/app/build.gradle
-        
-        echo "✓ Created build.gradle.kts with signing configuration"
-        echo "=== Final build.gradle.kts ==="
-        cat android/app/build.gradle.kts
+        'plugins {' \
+        '    id("com.android.application")' \
+        '    id("kotlin-android")' \
+        '    id("dev.flutter.flutter-gradle-plugin")' \
+        '}' \
+        '' \
+        'val keystorePropertiesFile = rootProject.file("key.properties")' \
+        'val keystoreProperties = java.util.Properties()' \
+        'if (keystorePropertiesFile.exists()) keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))' \
+        '' \
+        'android {' \
+        '    namespace = "com.example.finsparkai"' \
+        '    compileSdk = flutter.compileSdkVersion' \
+        '    ndkVersion = flutter.ndkVersion' \
+        '' \
+        '    defaultConfig {' \
+        '        applicationId = "com.example.finsparkai"' \
+        '        minSdk = flutter.minSdkVersion' \
+        '        targetSdk = flutter.targetSdkVersion' \
+        '        versionCode = flutter.versionCode' \
+        '        versionName = flutter.versionName' \
+        '    }' \
+        '' \
+        '    signingConfigs {' \
+        '        create("release") {' \
+        '            if (keystorePropertiesFile.exists()) {' \
+        '                keyAlias = keystoreProperties["keyAlias"] as String' \
+        '                keyPassword = keystoreProperties["keyPassword"] as String' \
+        '                storeFile = file(keystoreProperties["storeFile"] as String)' \
+        '                storePassword = keystoreProperties["storePassword"] as String' \
+        '            }' \
+        '        }' \
+        '    }' \
+        '' \
+        '    buildTypes {' \
+        '        release {' \
+        '            signingConfig = signingConfigs.getByName("release")' \
+        '            isMinifyEnabled = false' \
+        '        }' \
+        '    }' \
+        '}' \
+        '' \
+        'flutter { source = "../.." }' \
+        '' \
+        'dependencies {}' \
+        > android/app/build.gradle.kts
 
-    - name: Create .env file
+        rm -f android/app/build.gradle
+        echo "✓ Kotlin DSL created"
+
+    # ==========================================================
+    # ENV + KEYSTORE
+    # ==========================================================
+    - name: Create .env
       run: |
         echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
         echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
         echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-        echo "✅ .env file created"
 
-    - name: Decode keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-        if [ ! -f android/app/upload-keystore.jks ]; then
-          echo "ERROR: Keystore file was not created!"
-          exit 1
-        fi
-        echo "✅ Keystore decoded successfully"
+    - name: Decode Keystore
+      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
-    - name: Create key.properties
+    - name: key.properties
       run: |
-        printf '%s\n' \
-          "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" \
-          "keyPassword=${{ secrets.KEY_PASSWORD }}" \
-          "keyAlias=${{ secrets.KEY_ALIAS }}" \
-          "storeFile=upload-keystore.jks" \
-          > android/key.properties
-        echo "✅ key.properties created"
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+        echo "storeFile=upload-keystore.jks" >> android/key.properties
 
-    - name: Verify build.gradle.kts
-      run: |
-        echo "=== Contents of build.gradle.kts ==="
-        cat android/app/build.gradle.kts
-        echo ""
-        echo "=== Checking for signing config ==="
-        grep -A 5 "signingConfigs" android/app/build.gradle.kts || echo "WARNING: No signing config found!"
-        
-        echo ""
-        echo "=== Verifying key.properties ==="
-        cat android/key.properties
-        
-        echo ""
-        echo "=== Verifying keystore file ==="
-        ls -la android/app/upload-keystore.jks
-
-    - name: Cache Flutter dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.pub-cache
-          .dart_tool
-        key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pub-
-
-    - name: Clean and get dependencies
-      timeout-minutes: 5
-      run: |
-        flutter clean
-        flutter pub get --verbose
-        echo "✅ Dependencies installed"
-   
-    - name: Generate app icons
-      timeout-minutes: 3
-      run: |
-        echo "Generating launcher icons..."
-        dart run flutter_launcher_icons
-        echo "✅ Icons generated"
+    # ==========================================================
+    # BUILD PROCESS
+    # ==========================================================
+    - run: flutter clean
+    - run: flutter pub get
+    - run: dart run flutter_launcher_icons
 
     - name: Build APK
-      timeout-minutes: 15
-      run: |
-        echo "Starting APK build..."
-        flutter build apk --release --verbose
-        echo "✅ APK built successfully"
-
-    - name: Verify APK was created
-      run: |
-        if [ ! -f build/app/outputs/flutter-apk/app-release.apk ]; then
-          echo "ERROR: APK file was not created!"
-          exit 1
-        fi
-        echo "✅ APK file exists"
-        ls -lh build/app/outputs/flutter-apk/app-release.apk
-
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
+      run: flutter build apk --release --verbose
 
     - name: Build AAB
-      timeout-minutes: 15
-      run: |
-        flutter build appbundle --release
-        echo "✅ AAB built successfully"
+      run: flutter build appbundle --release
 
-    - name: Verify AAB was created
-      run: |
-        if [ ! -f build/app/outputs/bundle/release/app-release.aab ]; then
-          echo "ERROR: AAB file was not created!"
-          exit 1
-        fi
-        echo "✅ AAB file exists"
-        ls -lh build/app/outputs/bundle/release/app-release.aab
-
-    - name: Upload AAB
-      uses: actions/upload-artifact@v4
+    # ==========================================================
+    # ARTIFACT EXPORT
+    # ==========================================================
+    - uses: actions/upload-artifact@v4
       with:
-        name: app-release-aab
+        name: apk-release
+        path: build/app/outputs/flutter-apk/app-release.apk
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: aab-release
         path: build/app/outputs/bundle/release/app-release.aab
