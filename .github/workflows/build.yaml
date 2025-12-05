@@ -115,11 +115,8 @@ jobs:
         if [ -f android/app/build.gradle ]; then
           echo "Found Groovy build.gradle - Converting to Kotlin DSL"
           
-          # Read the existing build.gradle
-          BUILD_CONTENT=$(cat android/app/build.gradle)
-          
-          # Create a proper Kotlin DSL build.gradle.kts
-          cat > android/app/build.gradle.kts << 'BUILDEOF'
+          # Create a proper Kotlin DSL build.gradle.kts using echo statements
+          cat > android/app/build.gradle.kts << 'EOFBUILD'
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -160,7 +157,7 @@ flutter {
 }
 
 dependencies {}
-BUILDEOF
+EOFBUILD
           
           # Remove old Groovy file
           rm android/app/build.gradle
