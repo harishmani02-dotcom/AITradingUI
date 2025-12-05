@@ -92,11 +92,28 @@ jobs:
         echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties  
         echo "storeFile=upload-keystore.jks" >> android/key.properties  
 
+    - name: Migrate Android project to new format
+      run: |
+        echo "=== Migrating Android project to supported format ==="
+        cd android
+        flutter create --platforms=android --org com.example --project-name ai_trading_signals .
+        cd ..
+        echo "✓ Android project migrated"
+
+    - name: Restore keystore and properties after migration
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+        echo "storeFile=upload-keystore.jks" >> android/key.properties
+        echo "✓ Keystore and properties restored"
+
     - name: Clean and get dependencies  
       run: |  
         flutter clean  
         flutter pub get  
-     
+ 
     - name: Generate app icons  
       run: |  
         echo "Generating launcher icons..."  
