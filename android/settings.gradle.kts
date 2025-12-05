@@ -3,18 +3,21 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
-        
-        // ⭐ FINAL FIX: Use the FLUTTER_ROOT environment variable directly.
-        // This relies on the GitHub Action setting FLUTTER_ROOT to the correct absolute path.
-        maven(url = uri("${System.getenv("FLUTTER_ROOT")}/packages/flutter_tools/gradle"))
+
+        // Important: Flutter automatically provides this repo
+        maven {
+            url = uri("${System.getenv("FLUTTER_ROOT")}/packages/flutter_tools/gradle")
+        }
     }
 }
 
 plugins {
     id("com.android.application") version "8.1.2" apply false
-    id("com.android.library") version "8.1.2" apply false 
+    id("com.android.library") version "8.1.2" apply false
     id("org.jetbrains.kotlin.android") version "1.9.0" apply false
-    id("dev.flutter.flutter-gradle-plugin") version "1.0.0" apply false
+
+    // Correct Flutter plugin ID
+    id("dev.flutter.flutter-plugin") apply false
 }
 
 include(":app")
