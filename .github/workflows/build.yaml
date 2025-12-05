@@ -110,65 +110,74 @@ jobs:
         
         PACKAGE_NAME="com.example.finsparkai"
         
-        if [ -f android/app/build.gradle ]; then
-          echo "Found Groovy build.gradle - Converting to Kotlin DSL"
-          
-          printf '%s\n' \
-            'plugins {' \
-            '    id("com.android.application")' \
-            '    id("kotlin-android")' \
-            '    id("dev.flutter.flutter-gradle-plugin")' \
-            '}' \
-            '' \
-            'android {' \
-            '    namespace = "com.example.finsparkai"' \
-            '    compileSdk = flutter.compileSdkVersion' \
-            '    ndkVersion = flutter.ndkVersion' \
-            '' \
-            '    compileOptions {' \
-            '        sourceCompatibility = JavaVersion.VERSION_1_8' \
-            '        targetCompatibility = JavaVersion.VERSION_1_8' \
-            '    }' \
-            '' \
-            '    kotlinOptions {' \
-            '        jvmTarget = "1.8"' \
-            '    }' \
-            '' \
-            '    defaultConfig {' \
-            '        applicationId = "com.example.finsparkai"' \
-            '        minSdk = flutter.minSdkVersion' \
-            '        targetSdk = flutter.targetSdkVersion' \
-            '        versionCode = flutter.versionCode' \
-            '        versionName = flutter.versionName' \
-            '    }' \
-            '' \
-            '    buildTypes {' \
-            '        release {' \
-            '            signingConfig = signingConfigs.getByName("debug")' \
-            '        }' \
-            '    }' \
-            '}' \
-            '' \
-            'flutter {' \
-            '    source = "../.."' \
-            '}' \
-            '' \
-            'dependencies {}' \
-            > android/app/build.gradle.kts
-          
-          rm android/app/build.gradle
-          echo "✓ Converted to build.gradle.kts"
-          
-        elif [ -f android/app/build.gradle.kts ]; then
-          echo "Found build.gradle.kts - Updating package name"
-          sed -i "s/namespace = \".*\"/namespace = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
-          sed -i "s/applicationId = \".*\"/applicationId = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
-          echo "✓ Updated package name"
-        else
-          echo "ERROR: No build file found!"
-          exit 1
-        fi
+        # Always create a fresh Kotlin DSL file with signing built-in
+        echo "Creating complete build.gradle.kts with signing configuration"
         
+        printf '%s\n' \
+          'plugins {' \
+          '    id("com.android.application")' \
+          '    id("kotlin-android")' \
+          '    id("dev.flutter.flutter-gradle-plugin")' \
+          '}' \
+          '' \
+          '// Load keystore properties' \
+          'val keystorePropertiesFile = rootProject.file("key.properties")' \
+          'val keystoreProperties = java.util.Properties()' \
+          'if (keystorePropertiesFile.exists()) {' \
+          '    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))' \
+          '}' \
+          '' \
+          'android {' \
+          '    namespace = "com.example.finsparkai"' \
+          '    compileSdk = flutter.compileSdkVersion' \
+          '    ndkVersion = flutter.ndkVersion' \
+          '' \
+          '    compileOptions {' \
+          '        sourceCompatibility = JavaVersion.VERSION_1_8' \
+          '        targetCompatibility = JavaVersion.VERSION_1_8' \
+          '    }' \
+          '' \
+          '    kotlinOptions {' \
+          '        jvmTarget = "1.8"' \
+          '    }' \
+          '' \
+          '    defaultConfig {' \
+          '        applicationId = "com.example.finsparkai"' \
+          '        minSdk = flutter.minSdkVersion' \
+          '        targetSdk = flutter.targetSdkVersion' \
+          '        versionCode = flutter.versionCode' \
+          '        versionName = flutter.versionName' \
+          '    }' \
+          '' \
+          '    signingConfigs {' \
+          '        create("release") {' \
+          '            if (keystorePropertiesFile.exists()) {' \
+          '                keyAlias = keystoreProperties["keyAlias"] as String' \
+          '                keyPassword = keystoreProperties["keyPassword"] as String' \
+          '                storeFile = file(keystoreProperties["storeFile"] as String)' \
+          '                storePassword = keystoreProperties["storePassword"] as String' \
+          '            }' \
+          '        }' \
+          '    }' \
+          '' \
+          '    buildTypes {' \
+          '        release {' \
+          '            signingConfig = signingConfigs.getByName("release")' \
+          '        }' \
+          '    }' \
+          '}' \
+          '' \
+          'flutter {' \
+          '    source = "../.."' \
+          '}' \
+          '' \
+          'dependencies {}' \
+          > android/app/build.gradle.kts
+        
+        # Remove old Groovy file if it exists
+        rm -f android/app/build.gradle
+        
+        echo "✓ Created build.gradle.kts with signing configuration"
         echo "=== Final build.gradle.kts ==="
         cat android/app/build.gradle.kts
 
@@ -198,44 +207,6 @@ jobs:
           > android/key.properties
         echo "✅ key.properties created"
 
-    - name: Configure signing in build.gradle.kts
-      run: |
-        echo "=== Configuring signing for Kotlin DSL ==="
-        
-        printf '%s\n' \
-          '' \
-          '// Load keystore properties' \
-          'val keystorePropertiesFile = rootProject.file("key.properties")' \
-          'val keystoreProperties = java.util.Properties()' \
-          'if (keystorePropertiesFile.exists()) {' \
-          '    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))' \
-          '}' \
-          '' \
-          'android {' \
-          '    signingConfigs {' \
-          '        create("release") {' \
-          '            if (keystorePropertiesFile.exists()) {' \
-          '                keyAlias = keystoreProperties["keyAlias"] as String' \
-          '                keyPassword = keystoreProperties["keyPassword"] as String' \
-          '                storeFile = file(keystoreProperties["storeFile"] as String)' \
-          '                storePassword = keystoreProperties["storePassword"] as String' \
-          '            }' \
-          '        }' \
-          '    }' \
-          '    ' \
-          '    buildTypes {' \
-          '        release {' \
-          '            signingConfig = signingConfigs.getByName("release")' \
-          '        }' \
-          '    }' \
-          '}' \
-          > /tmp/signing_block.txt
-        
-        awk '/^flutter \{/{system("cat /tmp/signing_block.txt"); print; next} 1' android/app/build.gradle.kts > /tmp/build.gradle.kts.tmp
-        mv /tmp/build.gradle.kts.tmp android/app/build.gradle.kts
-        
-        echo "✅ Signing configuration added"
-
     - name: Verify build.gradle.kts
       run: |
         echo "=== Contents of build.gradle.kts ==="
@@ -243,6 +214,14 @@ jobs:
         echo ""
         echo "=== Checking for signing config ==="
         grep -A 5 "signingConfigs" android/app/build.gradle.kts || echo "WARNING: No signing config found!"
+        
+        echo ""
+        echo "=== Verifying key.properties ==="
+        cat android/key.properties
+        
+        echo ""
+        echo "=== Verifying keystore file ==="
+        ls -la android/app/upload-keystore.jks
 
     - name: Cache Flutter dependencies
       uses: actions/cache@v3
