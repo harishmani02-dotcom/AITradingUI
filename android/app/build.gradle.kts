@@ -9,156 +9,196 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+   
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    steps:  
-    - name: Checkout code  
-      uses: actions/checkout@v4  
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
 
-    - name: Setup Java  
-      uses: actions/setup-java@v4  
-      with:  
-        distribution: 'zulu'  
-        java-version: '17'  
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
+        cache: true
 
-    - name: Setup Flutter  
-      uses: subosito/flutter-action@v2  
-      with:  
-        flutter-version: '3.24.0'  
-        channel: 'stable'  
-
-    - name: Display current Android structure
+    - name: Verify secrets are set
       run: |
-        echo "=== Current Android files ==="
-        ls -la android/ || echo "No android folder"
-        echo ""
-        if [ -f android/app/build.gradle.kts ]; then
-          echo "Found build.gradle.kts (Kotlin DSL)"
+        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+          echo "ERROR: SUPABASE_URL secret is not set!"
+          exit 1
         fi
-        if [ -f android/app/build.gradle ]; then
-          echo "Found build.gradle (Groovy)"
+        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"
+          exit 1
         fi
+        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+          echo "ERROR: GEMINI_API_KEY secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "ERROR: KEYSTORE_BASE64 secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
+          echo "ERROR: KEYSTORE_PASSWORD secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
+          echo "ERROR: KEY_ALIAS secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
+          echo "ERROR: KEY_PASSWORD secret is not set!"
+          exit 1
+        fi
+        echo "✅ All secrets are set"
 
-    - name: Backup custom Android files
+    - name: Backup current Android customizations
       run: |
         echo "=== Backing up custom files ==="
         mkdir -p /tmp/android_backup
         
+        # Backup AndroidManifest
         if [ -f android/app/src/main/AndroidManifest.xml ]; then
           cp android/app/src/main/AndroidManifest.xml /tmp/android_backup/
           echo "✓ Backed up AndroidManifest.xml"
         fi
         
+        # Backup resources
         if [ -d android/app/src/main/res ]; then
           cp -r android/app/src/main/res /tmp/android_backup/
           echo "✓ Backed up res folder"
-        fi
-        
-        if [ -d android/app/src/main/kotlin ]; then
-          cp -r android/app/src/main/kotlin /tmp/android_backup/
-          echo "✓ Backed up kotlin folder"
         fi
 
     - name: Recreate Android folder with supported structure
       run: |
         echo "=== Removing old Android folder ==="
         rm -rf android/
-        echo "✓ Removed"
         
         echo "=== Creating new Android project ==="
-        flutter create --platforms=android .
-        echo "✓ Created"
+        # Use the package name from pubspec.yaml (finsparkAI -> finsparkai)
+        flutter create --org com.example --project-name finsparkai --platforms=android .
+        echo "✓ Android folder recreated with modern structure"
 
-    - name: Restore custom Android files
+    - name: Restore Android customizations
       run: |
         echo "=== Restoring custom files ==="
         
+        # Restore AndroidManifest
         if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
           cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          echo "✓ Restored AndroidManifest.xml"
+          # Update package name in AndroidManifest
+          sed -i 's/package="[^"]*"/package="com.example.finsparkai"/' android/app/src/main/AndroidManifest.xml
+          echo "✓ Restored and updated AndroidManifest.xml"
         fi
         
+        # Restore resources
         if [ -d /tmp/android_backup/res ]; then
           cp -r /tmp/android_backup/res/* android/app/src/main/res/ 2>/dev/null || true
           echo "✓ Restored res folder"
         fi
+
+    - name: Check and update build configuration
+      run: |
+        echo "=== Checking which build file exists ==="
+        ls -la android/app/build.* || true
         
-        if [ -d /tmp/android_backup/kotlin ]; then
-          mkdir -p android/app/src/main/kotlin
-          cp -r /tmp/android_backup/kotlin/* android/app/src/main/kotlin/
-          echo "✓ Restored kotlin folder"
+        # Use the correct package name based on pubspec.yaml
+        PACKAGE_NAME="com.example.finsparkai"
+        echo "Package name: $PACKAGE_NAME"
+        
+        # Update based on which file exists
+        if [ -f android/app/build.gradle.kts ]; then
+          echo "Found build.gradle.kts (Kotlin DSL)"
+          sed -i "s/namespace = \".*\"/namespace = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
+          sed -i "s/applicationId = \".*\"/applicationId = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
+          echo "✓ Updated package name in build.gradle.kts"
+        elif [ -f android/app/build.gradle ]; then
+          echo "Found build.gradle (Groovy)"
+          sed -i "s/namespace \".*\"/namespace \"$PACKAGE_NAME\"/" android/app/build.gradle
+          sed -i "s/applicationId \".*\"/applicationId \"$PACKAGE_NAME\"/" android/app/build.gradle
+          echo "✓ Updated package name in build.gradle"
+        else
+          echo "ERROR: No build.gradle or build.gradle.kts found!"
+          exit 1
         fi
 
-    - name: Verify secrets are set  
-      run: |  
-        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then  
-          echo "ERROR: SUPABASE_URL secret is not set!"  
-          exit 1  
-        fi  
-        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then  
-          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"  
-          exit 1  
-        fi  
-        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then  
-          echo "ERROR: GEMINI_API_KEY secret is not set!"  
-          exit 1  
-        fi  
-        echo "✓ All secrets are set"  
-
-    - name: Create .env file  
-      run: |  
-        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env  
-        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env  
-        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env  
-        echo "✓ .env file created"  
-         
-    - name: Verify .env file  
-      run: |  
-        if [ ! -f .env ]; then  
-          echo "ERROR: .env file was not created!"  
-          exit 1  
-        fi  
-        echo "✓ .env file exists"  
-        echo "File size: $(wc -c < .env) bytes"  
-        if [ $(wc -c < .env) -lt 100 ]; then  
-          echo "WARNING: .env file seems too small (less than 100 bytes)!"  
-          echo "This might indicate empty secret values."  
-        fi  
-        if grep -q "SUPABASE_URL=https://" .env; then  
-          echo "✓ SUPABASE_URL has correct format"  
-        else  
-          echo "ERROR: SUPABASE_URL is missing or malformed!"  
-          exit 1  
-        fi  
-        if grep -q "SUPABASE_ANON_KEY=eyJ" .env; then  
-          echo "✓ SUPABASE_ANON_KEY has correct format"  
-        else  
-          echo "ERROR: SUPABASE_ANON_KEY is missing or malformed!"  
-          exit 1  
-        fi  
-        if grep -q "GEMINI_API_KEY=AIza" .env; then  
-          echo "✓ GEMINI_API_KEY has correct format"  
-        else  
-          echo "ERROR: GEMINI_API_KEY is missing or malformed!"  
-          exit 1  
-        fi  
-
-    - name: Decode keystore  
-      run: |  
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks  
-        echo "✓ Keystore decoded"
-
-    - name: Create key.properties  
-      run: |  
-        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties  
-        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties  
-        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties  
-        echo "storeFile=upload-keystore.jks" >> android/key.properties  
-        echo "✓ key.properties created"
-
-    - name: Configure signing in build.gradle
+    - name: Create .env file
       run: |
-        # Insert signing configuration into the existing build.gradle
-        cat > /tmp/signing_config.txt << 'EOF'
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+        echo "✅ .env file created"
+
+    - name: Decode keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+        if [ ! -f android/app/upload-keystore.jks ]; then
+          echo "ERROR: Keystore file was not created!"
+          exit 1
+        fi
+        echo "✅ Keystore decoded successfully"
+
+    - name: Create key.properties
+      run: |
+        cat > android/key.properties << EOF
+        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+        keyPassword=${{ secrets.KEY_PASSWORD }}
+        keyAlias=${{ secrets.KEY_ALIAS }}
+        storeFile=upload-keystore.jks
+        EOF
+        echo "✅ key.properties created"
+
+    - name: Configure signing in build configuration
+      run: |
+        if [ -f android/app/build.gradle.kts ]; then
+          echo "=== Configuring signing for Kotlin DSL ==="
+          # Create the signing configuration block for Kotlin DSL
+          cat > /tmp/signing_block.txt << 'EOFMARKER'
+        
+        // Load keystore properties
+        val keystorePropertiesFile = rootProject.file("key.properties")
+        val keystoreProperties = java.util.Properties()
+        if (keystorePropertiesFile.exists()) {
+            keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+        }
+        
+        android {
+            signingConfigs {
+                create("release") {
+                    if (keystorePropertiesFile.exists()) {
+                        keyAlias = keystoreProperties["keyAlias"] as String
+                        keyPassword = keystoreProperties["keyPassword"] as String
+                        storeFile = file(keystoreProperties["storeFile"] as String)
+                        storePassword = keystoreProperties["storePassword"] as String
+                    }
+                }
+            }
+            
+            buildTypes {
+                release {
+                    signingConfig = signingConfigs.getByName("release")
+                }
+            }
+        }
+        EOFMARKER
+          
+          # Insert the signing block before the flutter block
+          awk '/^flutter \{/{system("cat /tmp/signing_block.txt"); print; next} 1' android/app/build.gradle.kts > /tmp/build.gradle.kts.tmp
+          mv /tmp/build.gradle.kts.tmp android/app/build.gradle.kts
+          echo "✅ Signing configuration added to build.gradle.kts"
+          
+        elif [ -f android/app/build.gradle ]; then
+          echo "=== Configuring signing for Groovy ==="
+          # Create the signing configuration block for Groovy
+          cat > /tmp/signing_block.txt << 'EOFMARKER'
 
 def keystorePropertiesFile = rootProject.file("key.properties")
 def keystoreProperties = new Properties()
@@ -183,42 +223,96 @@ android {
         }
     }
 }
-EOF
+EOFMARKER
+          
+          # Insert the signing block before the flutter block
+          awk '/^flutter \{/{system("cat /tmp/signing_block.txt"); print; next} 1' android/app/build.gradle > /tmp/build.gradle.tmp
+          mv /tmp/build.gradle.tmp android/app/build.gradle
+          echo "✅ Signing configuration added to build.gradle"
+        else
+          echo "ERROR: No build file found!"
+          exit 1
+        fi
 
-        # Append to build.gradle
-        cat /tmp/signing_config.txt >> android/app/build.gradle
-        echo "✓ Signing configuration added"
+    - name: Verify build configuration
+      run: |
+        if [ -f android/app/build.gradle.kts ]; then
+          echo "=== Contents of build.gradle.kts ==="
+          cat android/app/build.gradle.kts
+          echo ""
+          echo "=== Checking for signing config ==="
+          grep -A 5 "signingConfigs" android/app/build.gradle.kts || echo "WARNING: No signing config found!"
+        elif [ -f android/app/build.gradle ]; then
+          echo "=== Contents of build.gradle ==="
+          cat android/app/build.gradle
+          echo ""
+          echo "=== Checking for signing config ==="
+          grep -A 5 "signingConfigs" android/app/build.gradle || echo "WARNING: No signing config found!"
+        fi
 
-    - name: Clean and get dependencies  
-      run: |  
-        flutter clean  
-        flutter pub get  
- 
-    - name: Generate app icons  
-      run: |  
-        echo "Generating launcher icons..."  
-        dart run flutter_launcher_icons  
-        echo "✓ Icons generated"  
+    - name: Cache Flutter dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.pub-cache
+          .dart_tool
+        key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pub-
 
-    - name: Build APK  
-      run: flutter build apk --release --verbose  
+    - name: Clean and get dependencies
+      timeout-minutes: 5
+      run: |
+        flutter clean
+        flutter pub get --verbose
+        echo "✅ Dependencies installed"
+   
+    - name: Generate app icons
+      timeout-minutes: 3
+      run: |
+        echo "Generating launcher icons..."
+        dart run flutter_launcher_icons
+        echo "✅ Icons generated"
 
-    - name: Verify APK includes .env  
-      run: |  
-        echo "=== Checking if .env is bundled in APK ==="  
-        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep "flutter_assets" | grep ".env" || echo "WARNING: .env might not be in APK!"  
+    - name: Build APK
+      timeout-minutes: 15
+      run: |
+        echo "Starting APK build..."
+        flutter build apk --release --verbose
+        echo "✅ APK built successfully"
 
-    - name: Upload APK  
-      uses: actions/upload-artifact@v4  
-      with:  
-        name: app-release-apk  
-        path: build/app/outputs/flutter-apk/app-release.apk  
+    - name: Verify APK was created
+      run: |
+        if [ ! -f build/app/outputs/flutter-apk/app-release.apk ]; then
+          echo "ERROR: APK file was not created!"
+          exit 1
+        fi
+        echo "✅ APK file exists"
+        ls -lh build/app/outputs/flutter-apk/app-release.apk
 
-    - name: Build AAB  
-      run: flutter build appbundle --release  
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
 
-    - name: Upload AAB  
-      uses: actions/upload-artifact@v4  
-      with:  
-        name: app-release-aab  
+    - name: Build AAB
+      timeout-minutes: 15
+      run: |
+        flutter build appbundle --release
+        echo "✅ AAB built successfully"
+
+    - name: Verify AAB was created
+      run: |
+        if [ ! -f build/app/outputs/bundle/release/app-release.aab ]; then
+          echo "ERROR: AAB file was not created!"
+          exit 1
+        fi
+        echo "✅ AAB file exists"
+        ls -lh build/app/outputs/bundle/release/app-release.aab
+
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-aab
         path: build/app/outputs/bundle/release/app-release.aab
