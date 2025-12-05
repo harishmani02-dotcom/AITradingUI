@@ -119,7 +119,7 @@ jobs:
           BUILD_CONTENT=$(cat android/app/build.gradle)
           
           # Create a proper Kotlin DSL build.gradle.kts
-          cat > android/app/build.gradle.kts << 'EOF'
+          cat > android/app/build.gradle.kts << 'BUILDEOF'
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -160,7 +160,7 @@ flutter {
 }
 
 dependencies {}
-EOF
+BUILDEOF
           
           # Remove old Groovy file
           rm android/app/build.gradle
