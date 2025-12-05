@@ -83,7 +83,6 @@ jobs:
         rm -rf android/
         
         echo "=== Creating new Android project ==="
-        # Use the package name from pubspec.yaml (finsparkAI -> finsparkai)
         flutter create --org com.example --project-name finsparkai --platforms=android .
         echo "✓ Android folder recreated with modern structure"
 
@@ -94,7 +93,6 @@ jobs:
         # Restore AndroidManifest
         if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
           cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          # Update package name in AndroidManifest
           sed -i 's/package="[^"]*"/package="com.example.finsparkai"/' android/app/src/main/AndroidManifest.xml
           echo "✓ Restored and updated AndroidManifest.xml"
         fi
@@ -115,7 +113,6 @@ jobs:
         if [ -f android/app/build.gradle ]; then
           echo "Found Groovy build.gradle - Converting to Kotlin DSL"
           
-          # Create build.gradle.kts using printf to avoid heredoc issues
           printf '%s\n' \
             'plugins {' \
             '    id("com.android.application")' \
@@ -159,7 +156,6 @@ jobs:
             'dependencies {}' \
             > android/app/build.gradle.kts
           
-          # Remove old Groovy file
           rm android/app/build.gradle
           echo "✓ Converted to build.gradle.kts"
           
@@ -194,53 +190,51 @@ jobs:
 
     - name: Create key.properties
       run: |
-        cat > android/key.properties << EOF
-        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-        keyPassword=${{ secrets.KEY_PASSWORD }}
-        keyAlias=${{ secrets.KEY_ALIAS }}
-        storeFile=upload-keystore.jks
-        EOF
+        printf '%s\n' \
+          "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" \
+          "keyPassword=${{ secrets.KEY_PASSWORD }}" \
+          "keyAlias=${{ secrets.KEY_ALIAS }}" \
+          "storeFile=upload-keystore.jks" \
+          > android/key.properties
         echo "✅ key.properties created"
 
     - name: Configure signing in build.gradle.kts
       run: |
         echo "=== Configuring signing for Kotlin DSL ==="
         
-        # Create the signing configuration block
-        cat > /tmp/signing_block.txt << 'EOFMARKER'
-
-// Load keystore properties
-val keystorePropertiesFile = rootProject.file("key.properties")
-val keystoreProperties = java.util.Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
-}
-
-android {
-    signingConfigs {
-        create("release") {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias = keystoreProperties["keyAlias"] as String
-                keyPassword = keystoreProperties["keyPassword"] as String
-                storeFile = file(keystoreProperties["storeFile"] as String)
-                storePassword = keystoreProperties["storePassword"] as String
-            }
-        }
-    }
-    
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-        }
-    }
-}
-EOFMARKER
+        printf '%s\n' \
+          '' \
+          '// Load keystore properties' \
+          'val keystorePropertiesFile = rootProject.file("key.properties")' \
+          'val keystoreProperties = java.util.Properties()' \
+          'if (keystorePropertiesFile.exists()) {' \
+          '    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))' \
+          '}' \
+          '' \
+          'android {' \
+          '    signingConfigs {' \
+          '        create("release") {' \
+          '            if (keystorePropertiesFile.exists()) {' \
+          '                keyAlias = keystoreProperties["keyAlias"] as String' \
+          '                keyPassword = keystoreProperties["keyPassword"] as String' \
+          '                storeFile = file(keystoreProperties["storeFile"] as String)' \
+          '                storePassword = keystoreProperties["storePassword"] as String' \
+          '            }' \
+          '        }' \
+          '    }' \
+          '    ' \
+          '    buildTypes {' \
+          '        release {' \
+          '            signingConfig = signingConfigs.getByName("release")' \
+          '        }' \
+          '    }' \
+          '}' \
+          > /tmp/signing_block.txt
         
-        # Insert the signing block before the flutter block
         awk '/^flutter \{/{system("cat /tmp/signing_block.txt"); print; next} 1' android/app/build.gradle.kts > /tmp/build.gradle.kts.tmp
         mv /tmp/build.gradle.kts.tmp android/app/build.gradle.kts
         
-        echo "✅ Signing configuration added to build.gradle.kts"
+        echo "✅ Signing configuration added"
 
     - name: Verify build.gradle.kts
       run: |
