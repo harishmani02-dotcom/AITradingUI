@@ -2,10 +2,16 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
  
 class AIService {
-  // Get API key from .env file
-  static String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
-  // Get API key from compile-time environment variable (dart-define)
-  static const String _apiKey = String.fromEnvironment('GEMINI_API_KEY');
+  // Get API key from both dart-define and .env (with fallback)
+  static String get _apiKey {
+    // First try dart-define (for production builds via --dart-define)
+    const dartDefineKey = String.fromEnvironment('GEMINI_API_KEY');
+    if (dartDefineKey.isNotEmpty) {
+      return dartDefineKey;
+    }
+    // Fallback to .env file (for local development)
+    return dotenv.env['GEMINI_API_KEY'] ?? '';
+  }
 
   // System prompt to make AI act as a trading assistant
   static const String _systemPrompt = '''You are an expert Indian stock market trading assistant with deep knowledge of:
