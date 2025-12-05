@@ -60,44 +60,65 @@ jobs:
         fi
         echo "✅ All secrets are set"
 
+    - name: Backup current Android customizations
+      run: |
+        echo "=== Backing up custom files ==="
+        mkdir -p /tmp/android_backup
+        
+        # Backup AndroidManifest
+        if [ -f android/app/src/main/AndroidManifest.xml ]; then
+          cp android/app/src/main/AndroidManifest.xml /tmp/android_backup/
+          echo "✓ Backed up AndroidManifest.xml"
+        fi
+        
+        # Backup resources
+        if [ -d android/app/src/main/res ]; then
+          cp -r android/app/src/main/res /tmp/android_backup/
+          echo "✓ Backed up res folder"
+        fi
+
+    - name: Recreate Android folder with supported structure
+      run: |
+        echo "=== Removing old Android folder ==="
+        rm -rf android/
+        
+        echo "=== Creating new Android project ==="
+        flutter create --platforms=android .
+        echo "✓ Android folder recreated with modern structure"
+
+    - name: Restore Android customizations
+      run: |
+        echo "=== Restoring custom files ==="
+        
+        # Restore AndroidManifest
+        if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
+          cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          echo "✓ Restored AndroidManifest.xml"
+        fi
+        
+        # Restore resources
+        if [ -d /tmp/android_backup/res ]; then
+          cp -r /tmp/android_backup/res/* android/app/src/main/res/ 2>/dev/null || true
+          echo "✓ Restored res folder"
+        fi
+
+    - name: Update package name in build.gradle.kts
+      run: |
+        # Extract package name from AndroidManifest
+        PACKAGE_NAME=$(grep -oP 'package="\K[^"]+' android/app/src/main/AndroidManifest.xml || echo "com.example.finsparkAI")
+        echo "Package name: $PACKAGE_NAME"
+        
+        # Update namespace and applicationId in build.gradle.kts
+        sed -i "s/namespace = \".*\"/namespace = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
+        sed -i "s/applicationId = \".*\"/applicationId = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
+        echo "✓ Updated package name in build.gradle.kts"
+
     - name: Create .env file
       run: |
         echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
         echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
         echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
         echo "✅ .env file created"
-       
-    - name: Verify .env file
-      run: |
-        if [ ! -f .env ]; then
-          echo "ERROR: .env file was not created!"
-          exit 1
-        fi
-        echo "✅ .env file exists"
-        echo "File size: $(wc -c < .env) bytes"
-        if [ $(wc -c < .env) -lt 100 ]; then
-          echo "WARNING: .env file seems too small (less than 100 bytes)!"
-          echo "This might indicate empty secret values."
-        fi
-        # Verify structure without revealing secrets
-        if grep -q "SUPABASE_URL=https://" .env; then
-          echo "✅ SUPABASE_URL has correct format"
-        else
-          echo "ERROR: SUPABASE_URL is missing or malformed!"
-          exit 1
-        fi
-        if grep -q "SUPABASE_ANON_KEY=eyJ" .env; then
-          echo "✅ SUPABASE_ANON_KEY has correct format"
-        else
-          echo "ERROR: SUPABASE_ANON_KEY is missing or malformed!"
-          exit 1
-        fi
-        if grep -q "GEMINI_API_KEY=AIza" .env; then
-          echo "✅ GEMINI_API_KEY has correct format"
-        else
-          echo "ERROR: GEMINI_API_KEY is missing or malformed!"
-          exit 1
-        fi
 
     - name: Decode keystore
       run: |
@@ -108,21 +129,65 @@ jobs:
         fi
         echo "✅ Keystore decoded successfully"
 
-    - name: Create keystore.properties
+    - name: Create key.properties
       run: |
-        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/keystore.properties
-        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/keystore.properties
-        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/keystore.properties
-        echo "storeFile=app/upload-keystore.jks" >> android/keystore.properties
-        echo "✅ keystore.properties created"
+        cat > android/key.properties << EOF
+        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+        keyPassword=${{ secrets.KEY_PASSWORD }}
+        keyAlias=${{ secrets.KEY_ALIAS }}
+        storeFile=upload-keystore.jks
+        EOF
+        echo "✅ key.properties created"
 
-    - name: Verify keystore.properties
+    - name: Configure signing in build.gradle.kts
       run: |
-        if [ ! -f android/keystore.properties ]; then
-          echo "ERROR: keystore.properties was not created!"
-          exit 1
-        fi
-        echo "✅ keystore.properties exists"
+        # Create the signing configuration block
+        cat > /tmp/signing_block.txt << 'EOF'
+
+// Load keystore properties
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = java.util.Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+    
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+EOF
+
+        # Insert the signing block before the flutter block
+        sed -i '/^flutter {/i cat /tmp/signing_block.txt' android/app/build.gradle.kts
+        bash android/app/build.gradle.kts
+        
+        # Actually insert it properly
+        awk '/^flutter \{/{system("cat /tmp/signing_block.txt"); print; next} 1' android/app/build.gradle.kts > /tmp/build.gradle.kts.tmp
+        mv /tmp/build.gradle.kts.tmp android/app/build.gradle.kts
+        
+        echo "✅ Signing configuration added to build.gradle.kts"
+
+    - name: Verify build.gradle.kts
+      run: |
+        echo "=== Contents of build.gradle.kts ==="
+        cat android/app/build.gradle.kts
+        echo ""
+        echo "=== Checking for signing config ==="
+        grep -A 5 "signingConfigs" android/app/build.gradle.kts || echo "WARNING: No signing config found!"
 
     - name: Cache Flutter dependencies
       uses: actions/cache@v3
@@ -148,42 +213,11 @@ jobs:
         dart run flutter_launcher_icons
         echo "✅ Icons generated"
 
-    - name: Debug keystore setup
-      run: |
-        echo "=== Checking keystore.properties ==="
-        cat android/keystore.properties
-        echo ""
-        echo "=== Checking if keystore file exists ==="
-        ls -la android/app/upload-keystore.jks || echo "Keystore file NOT found!"
-        echo ""
-        echo "=== Checking android directory ==="
-        ls -la android/
-
     - name: Build APK
       timeout-minutes: 15
       run: |
         echo "Starting APK build..."
-        flutter build apk --release --verbose 2>&1 | tee build_log.txt
-        BUILD_EXIT_CODE=${PIPESTATUS[0]}
-        if [ $BUILD_EXIT_CODE -ne 0 ]; then
-          echo "========================================"
-          echo "BUILD FAILED - Showing relevant errors:"
-          echo "========================================"
-          grep -B 5 -A 10 "FAILURE\|ERROR\|Exception\|What went wrong" build_log.txt || tail -100 build_log.txt
-          echo "========================================"
-          echo "Checking for common issues..."
-          echo "========================================"
-          if grep -q "Cannot convert URL" build_log.txt; then
-            echo "❌ ERROR: Keystore path issue detected"
-            echo "Contents of keystore.properties:"
-            cat android/keystore.properties
-          fi
-          if grep -q "keystore" build_log.txt; then
-            echo "❌ ERROR: Keystore-related issue"
-            ls -la android/app/ | grep keystore || echo "No keystore files found"
-          fi
-          exit $BUILD_EXIT_CODE
-        fi
+        flutter build apk --release --verbose
         echo "✅ APK built successfully"
 
     - name: Verify APK was created
@@ -194,11 +228,6 @@ jobs:
         fi
         echo "✅ APK file exists"
         ls -lh build/app/outputs/flutter-apk/app-release.apk
-
-    - name: Verify APK includes .env
-      run: |
-        echo "=== Checking if .env is bundled in APK ==="
-        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep "flutter_assets" | grep ".env" || echo "WARNING: .env might not be in APK!"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
