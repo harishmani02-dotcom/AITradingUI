@@ -1,4 +1,4 @@
-plugins {
+Plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
@@ -7,15 +7,21 @@ plugins {
 import java.util.Properties
 import java.io.FileInputStream
  
-val keystorePropertiesFile = rootProject.file("key.properties")
+// --- Start of Keystore Configuration Cleanup ---
+// Use a single location to load the properties file.
+// Assuming your properties file is named 'key.properties' in the root folder.
+val keystorePropertiesFile = rootProject.file("key.properties") 
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
+// --- End of Keystore Configuration Cleanup ---
  
 android {
     namespace = "com.FinsparkAIplay.ai_trading_signals"
-    compileSdk = 35
+    
+    // 💡 FIX 1: Downgrade from 35 to 34 (latest stable SDK)
+    compileSdk = 34 
     ndkVersion = "25.1.8937393"
  
     compileOptions {
@@ -30,7 +36,9 @@ android {
     defaultConfig {
         applicationId = "com.FinsparkAIplay.ai_trading_signals.v3"
         minSdk = 21
-        targetSdk = 35
+        
+        // 💡 FIX 1: Downgrade from 35 to 34 (latest stable SDK)
+        targetSdk = 34 
         versionCode = 3
         versionName = "2.0.0"
        
@@ -39,15 +47,15 @@ android {
  
 signingConfigs {
     create("release") {
-        val keystorePropertiesFile = rootProject.file("keystore.properties")
-        if (keystorePropertiesFile.exists()) {
-            val keystoreProperties = Properties()
-            keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-
+        
+        // 💡 FIX 2: Use the keystoreProperties loaded at the top of the file
+        if (keystoreProperties.isNotEmpty()) {
             keyAlias = keystoreProperties["keyAlias"] as String
             keyPassword = keystoreProperties["keyPassword"] as String
             storePassword = keystoreProperties["storePassword"] as String
             storeFile = file(keystoreProperties["storeFile"] as String)
+        } else {
+             // You may want to add a proper error message here if the file is missing
         }
     }
 }
@@ -68,10 +76,3 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
-
-
-
-
-
-
-
