@@ -2,16 +2,16 @@ name: Build Android APK & AAB
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout
+    - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Setup Java
@@ -26,121 +26,88 @@ jobs:
         flutter-version: '3.24.0'
         channel: 'stable'
 
-    ############################################
-    # 1. Verify Secrets
-    ############################################
-    - name: Verify secrets
+    - name: Verify Secrets exist
       run: |
-        for v in SUPABASE_URL SUPABASE_ANON_KEY GEMINI_API_KEY KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
-          if [ -z "${{ secrets[$v] }}" ]; then
-            echo "❌ Missing secret: $v" && exit 1
+        for s in SUPABASE_URL SUPABASE_ANON_KEY GEMINI_API_KEY KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+          if [ -z "${{ secrets[$s] }}" ]; then
+            echo "❌ Missing secret: $s"; exit 1;
           fi
         done
-        echo "✔ All secrets available"
+        echo "✅ All secrets found"
 
-    ############################################
-    # 2. Regenerate Android Folder Fresh
-    ############################################
-    - name: Recreate Android folder safely
+    - name: Create .env
       run: |
-        mv android android_backup_$(date +%s) || true
-        flutter create --platforms=android --project-name finsparkai --org com.finspark.ai .
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+        echo "ENV file created"
 
-    ############################################
-    # 3. Apply Modern Gradle Fix (Important)
-    ############################################
-    - name: Fix Gradle settings
+    - name: Decode keystore
       run: |
-        cat > android/settings.gradle << 'EOF'
-pluginManagement {
-    repositories { google(); mavenCentral(); gradlePluginPortal() }
-}
-plugins {
-    id "com.android.application" version "8.1.2" apply false
-    id "org.jetbrains.kotlin.android" version "1.9.0" apply false
-    id "dev.flutter.flutter-gradle-plugin" version "1.0.0" apply false
-}
-include ":app"
-EOF
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-key.jks
+        echo "Keystore restored"
 
-        cat > android/build.gradle << 'EOF'
-allprojects {
-    repositories { google(); mavenCentral() }
-}
-task clean(type: Delete) { delete rootProject.buildDir }
-EOF
-
-    ############################################
-    # 4. Modify app/build.gradle to new format
-    ############################################
-    - name: Patch android/app/build.gradle
+    - name: Create key.properties
       run: |
-        cat > android/app/build.gradle << 'EOF'
-plugins {
-    id "com.android.application"
-    id "org.jetbrains.kotlin.android"
-    id "dev.flutter.flutter-gradle-plugin"
-}
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+        echo "storeFile=upload-key.jks" >> android/key.properties
+        echo "key.properties created"
+
+    - name: Fix build.gradle.kts (remove duplicate plugins if exists)
+      run: |
+        sed -i '/plugins {/q' android/app/build.gradle.kts # Keep first plugins block only
+        echo "Applying final gradle config..."
+
+        cat << 'EOF' >> android/app/build.gradle.kts
 
 android {
-    namespace "com.finspark.ai"
-    compileSdkVersion 34
+    namespace = "com.finspark.ai"
 
     defaultConfig {
-        applicationId "com.finspark.ai"
-        minSdkVersion 21
-        targetSdkVersion 34
-        versionCode 1
-        versionName "1.0"
+        applicationId = "com.finspark.ai"
     }
 
     signingConfigs {
-        release {
-            storeFile file("upload-keystore.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD")
-            keyAlias System.getenv("KEY_ALIAS")
-            keyPassword System.getenv("KEY_PASSWORD")
+        create("release") {
+            val props = java.util.Properties()
+            props.load(java.io.FileInputStream(rootProject.file("key.properties")))
+            keyAlias = props["keyAlias"] as String
+            keyPassword = props["keyPassword"] as String
+            storeFile = file(props["storeFile"] as String)
+            storePassword = props["storePassword"] as String
         }
     }
+
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            shrinkResources true
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false
         }
     }
 }
 
-flutter { source '../..' }
 EOF
+        echo "Gradle config updated successfully"
 
-    ############################################
-    # 5. Decode Keystore for Release Signing
-    ############################################
-    - name: Decode Keystore File
-      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+    - name: Flutter pub get
+      run: flutter pub get
 
-    ############################################
-    # 6. Build APK + AAB
-    ############################################
-    - name: Flutter Build
-      run: |
-        flutter pub get
-        flutter build apk --release
-        flutter build appbundle --release
+    - name: Build APK
+      run: flutter build apk --release --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
 
-    ############################################
-    # 7. Upload Build Artifacts
-    ############################################
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: FinsparkAI-APK
+        name: finspark-apk
         path: build/app/outputs/flutter-apk/app-release.apk
+
+    - name: Build AAB
+      run: flutter build appbundle --release --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: FinsparkAI-AAB
+        name: finspark-aab
         path: build/app/outputs/bundle/release/app-release.aab
