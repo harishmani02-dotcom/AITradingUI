@@ -1,93 +1,127 @@
-plugins {
-    id("com.android.application")
-    id("kotlin-android")
-    id("dev.flutter.flutter-gradle-plugin")
-}
+name: Build Android APK
 
-// Load key.properties once at the top (safe)
-val keystoreProperties = Properties()
-val keystorePropertiesFile = rootProject.file("key.properties")
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
-}
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-android {
-    namespace = "com.FinsparkAIplay.ai_trading_signals"
-    compileSdk = 35
-    ndkVersion = "27.0.12077973" // latest stable
+jobs:
+  build:
+    runs-on: ubuntu-latest
+   
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
 
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.0'
+        channel: 'stable'
 
-    defaultConfig {
-        applicationId = "com.FinsparkAIplay.ai_trading_signals.v3"
-        minSdk = 21
-        targetSdk = 35
-        versionCode = 3
-        versionName = "2.0.0"
-    }
+    - name: Verify secrets are set
+      run: |
+        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+          echo "ERROR: SUPABASE_URL secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"
+          exit 1
+        fi
+        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+          echo "ERROR: GEMINI_API_KEY secret is not set!"
+          exit 1
+        fi
+        echo "✓ All secrets are set"
 
-    signingConfigs {
-        create("release") {
-            val keyAlias = keystoreProperties["keyAlias"] as String?
-            val keyPassword = keystoreProperties["keyPassword"] as String?
-            val storePassword = keystoreProperties["storePassword"] as String?
-            val storeFilePath = keystoreProperties["storeFile"] as String?
+    - name: Create .env file
+      run: |
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+        echo "✓ .env file created"
+       
+    - name: Verify .env file
+      run: |
+        if [ ! -f .env ]; then
+          echo "ERROR: .env file was not created!"
+          exit 1
+        fi
+        echo "✓ .env file exists"
+        echo "File size: $(wc -c < .env) bytes"
+        if [ $(wc -c < .env) -lt 100 ]; then
+          echo "WARNING: .env file seems too small (less than 100 bytes)!"
+          echo "This might indicate empty secret values."
+        fi
+        # Verify structure without revealing secrets
+        if grep -q "SUPABASE_URL=https://" .env; then
+          echo "✓ SUPABASE_URL has correct format"
+        else
+          echo "ERROR: SUPABASE_URL is missing or malformed!"
+          exit 1
+        fi
+        if grep -q "SUPABASE_ANON_KEY=eyJ" .env; then
+          echo "✓ SUPABASE_ANON_KEY has correct format"
+        else
+          echo "ERROR: SUPABASE_ANON_KEY is missing or malformed!"
+          exit 1
+        fi
+        if grep -q "GEMINI_API_KEY=AIza" .env; then
+          echo "✓ GEMINI_API_KEY has correct format"
+        else
+          echo "ERROR: GEMINI_API_KEY is missing or malformed!"
+          exit 1
+        fi
 
-            if (keyAlias != null && keyPassword != null && storePassword != null && storeFilePath != null) {
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
-                this.storePassword = storePassword
-                storeFile = file(storeFilePath)
-            } else {
-                println("Warning: key.properties incomplete – release signing will use debug keys")
-            }
-        }
-    }
+    - name: Decode keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-        debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-        }
-    }
+    - name: Create keystore.properties
+      run: |
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/keystore.properties
+        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/keystore.properties
+        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/keystore.properties
+        echo "storeFile=upload-keystore.jks" >> android/keystore.properties
 
-    // Fix for duplicate META-INF licenses (required since AGP 8+)
-    packaging {
-        resources {
-            excludes += setOf(
-                "/META-INF/AL2.0",
-                "/META-INF/LGPL2.1",
-                "META-INF/DEPENDENCIES",
-                "META-INF/LICENSE",
-                "META-INF/LICENSE.txt",
-                "META-INF/license.txt",
-                "META-INF/NOTICE",
-                "META-INF/NOTICE.txt",
-                "META-INF/notice.txt",
-                "META-INF/ASL2.0",
-                "META-INF/*.kotlin_module"
-            )
-        }
-    }
-}
+    - name: Clean and get dependencies
+      run: |
+        flutter clean
+        flutter pub get
+   
+    - name: Generate app icons
+      run: |
+        echo "Generating launcher icons..."
+        dart run flutter_launcher_icons
+        echo "✓ Icons generated"
 
-flutter {
-    source = "../.."
-}
+    - name: Build APK
+      run: flutter build apk --release --verbose
 
-// Only add MultiDex if you really have >64k methods (99% of Flutter apps don’t need it anymore)
-dependencies {
-    // implementation("androidx.multidex:multidex:2.0.1")
-}
+    - name: Verify APK includes .env
+      run: |
+        echo "=== Checking if .env is bundled in APK ==="
+        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep "flutter_assets" | grep ".env" || echo "WARNING: .env might not be in APK!"
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+
+    - name: Build AAB
+      run: flutter build appbundle --release
+
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release-aab
+        path: build/app/outputs/bundle/release/app-release.aab
