@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK & AAB
 
 on:
   push:
@@ -9,10 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-   
+
     steps:
-    - name: Checkout code
+    - name: Checkout
       uses: actions/checkout@v4
 
     - name: Setup Java
@@ -26,293 +25,122 @@ jobs:
       with:
         flutter-version: '3.24.0'
         channel: 'stable'
-        cache: true
 
-    - name: Verify secrets are set
+    ############################################
+    # 1. Verify Secrets
+    ############################################
+    - name: Verify secrets
       run: |
-        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-          echo "ERROR: SUPABASE_URL secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
-          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
-          echo "ERROR: GEMINI_API_KEY secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-          echo "ERROR: KEYSTORE_BASE64 secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEYSTORE_PASSWORD }}" ]; then
-          echo "ERROR: KEYSTORE_PASSWORD secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
-          echo "ERROR: KEY_ALIAS secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
-          echo "ERROR: KEY_PASSWORD secret is not set!"
-          exit 1
-        fi
-        echo "✅ All secrets are set"
+        for v in SUPABASE_URL SUPABASE_ANON_KEY GEMINI_API_KEY KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+          if [ -z "${{ secrets[$v] }}" ]; then
+            echo "❌ Missing secret: $v" && exit 1
+          fi
+        done
+        echo "✔ All secrets available"
 
-    - name: Backup current Android customizations
+    ############################################
+    # 2. Regenerate Android Folder Fresh
+    ############################################
+    - name: Recreate Android folder safely
       run: |
-        echo "=== Backing up custom files ==="
-        mkdir -p /tmp/android_backup
-        
-        # Backup AndroidManifest
-        if [ -f android/app/src/main/AndroidManifest.xml ]; then
-          cp android/app/src/main/AndroidManifest.xml /tmp/android_backup/
-          echo "✓ Backed up AndroidManifest.xml"
-        fi
-        
-        # Backup resources
-        if [ -d android/app/src/main/res ]; then
-          cp -r android/app/src/main/res /tmp/android_backup/
-          echo "✓ Backed up res folder"
-        fi
+        mv android android_backup_$(date +%s) || true
+        flutter create --platforms=android --project-name finsparkai --org com.finspark.ai .
 
-    - name: Recreate Android folder with supported structure
+    ############################################
+    # 3. Apply Modern Gradle Fix (Important)
+    ############################################
+    - name: Fix Gradle settings
       run: |
-        echo "=== Removing old Android folder ==="
-        rm -rf android/
-        
-        echo "=== Creating new Android project ==="
-        # Use the package name from pubspec.yaml (finsparkAI -> finsparkai)
-        flutter create --org com.example --project-name finsparkai --platforms=android .
-        echo "✓ Android folder recreated with modern structure"
+        cat > android/settings.gradle << 'EOF'
+pluginManagement {
+    repositories { google(); mavenCentral(); gradlePluginPortal() }
+}
+plugins {
+    id "com.android.application" version "8.1.2" apply false
+    id "org.jetbrains.kotlin.android" version "1.9.0" apply false
+    id "dev.flutter.flutter-gradle-plugin" version "1.0.0" apply false
+}
+include ":app"
+EOF
 
-    - name: Restore Android customizations
+        cat > android/build.gradle << 'EOF'
+allprojects {
+    repositories { google(); mavenCentral() }
+}
+task clean(type: Delete) { delete rootProject.buildDir }
+EOF
+
+    ############################################
+    # 4. Modify app/build.gradle to new format
+    ############################################
+    - name: Patch android/app/build.gradle
       run: |
-        echo "=== Restoring custom files ==="
-        
-        # Restore AndroidManifest
-        if [ -f /tmp/android_backup/AndroidManifest.xml ]; then
-          cp /tmp/android_backup/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          # Update package name in AndroidManifest
-          sed -i 's/package="[^"]*"/package="com.example.finsparkai"/' android/app/src/main/AndroidManifest.xml
-          echo "✓ Restored and updated AndroidManifest.xml"
-        fi
-        
-        # Restore resources
-        if [ -d /tmp/android_backup/res ]; then
-          cp -r /tmp/android_backup/res/* android/app/src/main/res/ 2>/dev/null || true
-          echo "✓ Restored res folder"
-        fi
-
-    - name: Check and update build configuration
-      run: |
-        echo "=== Checking which build file exists ==="
-        ls -la android/app/build.* || true
-        
-        # Use the correct package name based on pubspec.yaml
-        PACKAGE_NAME="com.example.finsparkai"
-        echo "Package name: $PACKAGE_NAME"
-        
-        # Update based on which file exists
-        if [ -f android/app/build.gradle.kts ]; then
-          echo "Found build.gradle.kts (Kotlin DSL)"
-          sed -i "s/namespace = \".*\"/namespace = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
-          sed -i "s/applicationId = \".*\"/applicationId = \"$PACKAGE_NAME\"/" android/app/build.gradle.kts
-          echo "✓ Updated package name in build.gradle.kts"
-        elif [ -f android/app/build.gradle ]; then
-          echo "Found build.gradle (Groovy)"
-          sed -i "s/namespace \".*\"/namespace \"$PACKAGE_NAME\"/" android/app/build.gradle
-          sed -i "s/applicationId \".*\"/applicationId \"$PACKAGE_NAME\"/" android/app/build.gradle
-          echo "✓ Updated package name in build.gradle"
-        else
-          echo "ERROR: No build.gradle or build.gradle.kts found!"
-          exit 1
-        fi
-
-    - name: Create .env file
-      run: |
-        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
-        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
-        echo "✅ .env file created"
-
-    - name: Decode keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-        if [ ! -f android/app/upload-keystore.jks ]; then
-          echo "ERROR: Keystore file was not created!"
-          exit 1
-        fi
-        echo "✅ Keystore decoded successfully"
-
-    - name: Create key.properties
-      run: |
-        cat > android/key.properties << EOF
-        storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-        keyPassword=${{ secrets.KEY_PASSWORD }}
-        keyAlias=${{ secrets.KEY_ALIAS }}
-        storeFile=upload-keystore.jks
-        EOF
-        echo "✅ key.properties created"
-
-    - name: Configure signing in build configuration
-      run: |
-        if [ -f android/app/build.gradle.kts ]; then
-          echo "=== Configuring signing for Kotlin DSL ==="
-          # Create the signing configuration block for Kotlin DSL
-          cat > /tmp/signing_block.txt << 'EOFMARKER'
-        
-        // Load keystore properties
-        val keystorePropertiesFile = rootProject.file("key.properties")
-        val keystoreProperties = java.util.Properties()
-        if (keystorePropertiesFile.exists()) {
-            keystoreProperties.load(java.io.FileInputStream(keystorePropertiesFile))
-        }
-        
-        android {
-            signingConfigs {
-                create("release") {
-                    if (keystorePropertiesFile.exists()) {
-                        keyAlias = keystoreProperties["keyAlias"] as String
-                        keyPassword = keystoreProperties["keyPassword"] as String
-                        storeFile = file(keystoreProperties["storeFile"] as String)
-                        storePassword = keystoreProperties["storePassword"] as String
-                    }
-                }
-            }
-            
-            buildTypes {
-                release {
-                    signingConfig = signingConfigs.getByName("release")
-                }
-            }
-        }
-        EOFMARKER
-          
-          # Insert the signing block before the flutter block
-          awk '/^flutter \{/{system("cat /tmp/signing_block.txt"); print; next} 1' android/app/build.gradle.kts > /tmp/build.gradle.kts.tmp
-          mv /tmp/build.gradle.kts.tmp android/app/build.gradle.kts
-          echo "✅ Signing configuration added to build.gradle.kts"
-          
-        elif [ -f android/app/build.gradle ]; then
-          echo "=== Configuring signing for Groovy ==="
-          # Create the signing configuration block for Groovy
-          cat > /tmp/signing_block.txt << 'EOFMARKER'
-
-def keystorePropertiesFile = rootProject.file("key.properties")
-def keystoreProperties = new Properties()
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+        cat > android/app/build.gradle << 'EOF'
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+    id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
+    namespace "com.finspark.ai"
+    compileSdkVersion 34
+
+    defaultConfig {
+        applicationId "com.finspark.ai"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode 1
+        versionName "1.0"
+    }
+
     signingConfigs {
         release {
-            if (keystorePropertiesFile.exists()) {
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
-            }
+            storeFile file("upload-keystore.jks")
+            storePassword System.getenv("KEYSTORE_PASSWORD")
+            keyAlias System.getenv("KEY_ALIAS")
+            keyPassword System.getenv("KEY_PASSWORD")
         }
     }
     buildTypes {
         release {
             signingConfig signingConfigs.release
+            shrinkResources true
+            minifyEnabled true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
-EOFMARKER
-          
-          # Insert the signing block before the flutter block
-          awk '/^flutter \{/{system("cat /tmp/signing_block.txt"); print; next} 1' android/app/build.gradle > /tmp/build.gradle.tmp
-          mv /tmp/build.gradle.tmp android/app/build.gradle
-          echo "✅ Signing configuration added to build.gradle"
-        else
-          echo "ERROR: No build file found!"
-          exit 1
-        fi
 
-    - name: Verify build configuration
+flutter { source '../..' }
+EOF
+
+    ############################################
+    # 5. Decode Keystore for Release Signing
+    ############################################
+    - name: Decode Keystore File
+      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+    ############################################
+    # 6. Build APK + AAB
+    ############################################
+    - name: Flutter Build
       run: |
-        if [ -f android/app/build.gradle.kts ]; then
-          echo "=== Contents of build.gradle.kts ==="
-          cat android/app/build.gradle.kts
-          echo ""
-          echo "=== Checking for signing config ==="
-          grep -A 5 "signingConfigs" android/app/build.gradle.kts || echo "WARNING: No signing config found!"
-        elif [ -f android/app/build.gradle ]; then
-          echo "=== Contents of build.gradle ==="
-          cat android/app/build.gradle
-          echo ""
-          echo "=== Checking for signing config ==="
-          grep -A 5 "signingConfigs" android/app/build.gradle || echo "WARNING: No signing config found!"
-        fi
+        flutter pub get
+        flutter build apk --release
+        flutter build appbundle --release
 
-    - name: Cache Flutter dependencies
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.pub-cache
-          .dart_tool
-        key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-pub-
-
-    - name: Clean and get dependencies
-      timeout-minutes: 5
-      run: |
-        flutter clean
-        flutter pub get --verbose
-        echo "✅ Dependencies installed"
-   
-    - name: Generate app icons
-      timeout-minutes: 3
-      run: |
-        echo "Generating launcher icons..."
-        dart run flutter_launcher_icons
-        echo "✅ Icons generated"
-
-    - name: Build APK
-      timeout-minutes: 15
-      run: |
-        echo "Starting APK build..."
-        flutter build apk --release --verbose
-        echo "✅ APK built successfully"
-
-    - name: Verify APK was created
-      run: |
-        if [ ! -f build/app/outputs/flutter-apk/app-release.apk ]; then
-          echo "ERROR: APK file was not created!"
-          exit 1
-        fi
-        echo "✅ APK file exists"
-        ls -lh build/app/outputs/flutter-apk/app-release.apk
-
+    ############################################
+    # 7. Upload Build Artifacts
+    ############################################
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-apk
+        name: FinsparkAI-APK
         path: build/app/outputs/flutter-apk/app-release.apk
-
-    - name: Build AAB
-      timeout-minutes: 15
-      run: |
-        flutter build appbundle --release
-        echo "✅ AAB built successfully"
-
-    - name: Verify AAB was created
-      run: |
-        if [ ! -f build/app/outputs/bundle/release/app-release.aab ]; then
-          echo "ERROR: AAB file was not created!"
-          exit 1
-        fi
-        echo "✅ AAB file exists"
-        ls -lh build/app/outputs/bundle/release/app-release.aab
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-aab
+        name: FinsparkAI-AAB
         path: build/app/outputs/bundle/release/app-release.aab
