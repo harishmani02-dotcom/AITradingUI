@@ -115,49 +115,49 @@ jobs:
         if [ -f android/app/build.gradle ]; then
           echo "Found Groovy build.gradle - Converting to Kotlin DSL"
           
-          # Create a proper Kotlin DSL build.gradle.kts using echo statements
-          cat > android/app/build.gradle.kts << 'EOFBUILD'
-plugins {
-    id("com.android.application")
-    id("kotlin-android")
-    id("dev.flutter.flutter-gradle-plugin")
-}
-
-android {
-    namespace = "com.example.finsparkai"
-    compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
-    }
-
-    kotlinOptions {
-        jvmTarget = "1.8"
-    }
-
-    defaultConfig {
-        applicationId = "com.example.finsparkai"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-    }
-
-    buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug")
-        }
-    }
-}
-
-flutter {
-    source = "../.."
-}
-
-dependencies {}
-EOFBUILD
+          # Create build.gradle.kts using printf to avoid heredoc issues
+          printf '%s\n' \
+            'plugins {' \
+            '    id("com.android.application")' \
+            '    id("kotlin-android")' \
+            '    id("dev.flutter.flutter-gradle-plugin")' \
+            '}' \
+            '' \
+            'android {' \
+            '    namespace = "com.example.finsparkai"' \
+            '    compileSdk = flutter.compileSdkVersion' \
+            '    ndkVersion = flutter.ndkVersion' \
+            '' \
+            '    compileOptions {' \
+            '        sourceCompatibility = JavaVersion.VERSION_1_8' \
+            '        targetCompatibility = JavaVersion.VERSION_1_8' \
+            '    }' \
+            '' \
+            '    kotlinOptions {' \
+            '        jvmTarget = "1.8"' \
+            '    }' \
+            '' \
+            '    defaultConfig {' \
+            '        applicationId = "com.example.finsparkai"' \
+            '        minSdk = flutter.minSdkVersion' \
+            '        targetSdk = flutter.targetSdkVersion' \
+            '        versionCode = flutter.versionCode' \
+            '        versionName = flutter.versionName' \
+            '    }' \
+            '' \
+            '    buildTypes {' \
+            '        release {' \
+            '            signingConfig = signingConfigs.getByName("debug")' \
+            '        }' \
+            '    }' \
+            '}' \
+            '' \
+            'flutter {' \
+            '    source = "../.."' \
+            '}' \
+            '' \
+            'dependencies {}' \
+            > android/app/build.gradle.kts
           
           # Remove old Groovy file
           rm android/app/build.gradle
