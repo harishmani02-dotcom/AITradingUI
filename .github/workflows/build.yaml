@@ -54,9 +54,7 @@ jobs:
         echo "File size: $(wc -c < .env) bytes"
         if [ $(wc -c < .env) -lt 100 ]; then
           echo "WARNING: .env file seems too small (less than 100 bytes)!"
-          echo "This might indicate empty secret values."
         fi
-        # Verify structure without revealing secrets
         if grep -q "SUPABASE_URL=https://" .env; then
           echo "✓ SUPABASE_URL has correct format"
         else
@@ -73,6 +71,8 @@ jobs:
     - name: Decode keystore
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+        echo "✓ Keystore decoded"
+        ls -lh android/app/upload-keystore.jks
  
     - name: Create key.properties
       run: |
@@ -80,6 +80,14 @@ jobs:
         echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
         echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
         echo "storeFile=upload-keystore.jks" >> android/key.properties
+        echo "✓ key.properties created"
+
+    - name: Configure Gradle
+      run: |
+        mkdir -p ~/.gradle
+        echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> ~/.gradle/gradle.properties
+        echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
+        echo "org.gradle.caching=true" >> ~/.gradle/gradle.properties
  
     - name: Clean and get dependencies
       run: |
@@ -91,25 +99,50 @@ jobs:
         echo "Generating launcher icons..."
         dart run flutter_launcher_icons
         echo "✓ Icons generated"
+
+    - name: Analyze Gradle configuration
+      run: |
+        cd android
+        ./gradlew --version
+        echo "=== Gradle Wrapper Properties ==="
+        cat gradle/wrapper/gradle-wrapper.properties
  
     - name: Build APK
-      run: flutter build apk --release --verbose
- 
-    - name: Verify APK includes .env
       run: |
-        echo "=== Checking if .env is bundled in APK ==="
-        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep "flutter_assets" | grep ".env" || echo "WARNING: .env might not be in APK!"
+        flutter build apk --release --verbose 2>&1 | tee build.log
+        exit ${PIPESTATUS[0]}
+      continue-on-error: true
+
+    - name: Upload build log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: build.log
+ 
+    - name: Verify APK was created
+      run: |
+        if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
+          echo "✓ APK created successfully"
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
+        else
+          echo "ERROR: APK was not created!"
+          exit 1
+        fi
  
     - name: Upload APK
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
  
     - name: Build AAB
+      if: success()
       run: flutter build appbundle --release
  
     - name: Upload AAB
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-aab
