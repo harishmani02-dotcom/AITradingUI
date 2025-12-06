@@ -168,6 +168,12 @@ jobs:
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
 
+    - name: Create .env file
+      run: |
+        touch .env
+        echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+        echo ".env file created"
+
     - name: Get Dependencies
       run: flutter pub get
 
