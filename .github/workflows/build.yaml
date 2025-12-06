@@ -1,286 +1,116 @@
-name: Build Android APK & AAB
-
+name: Build Android APK
+ 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
-
+ 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-
+   
     steps:
-    - name: Checkout Repository
+    - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Setup Java 17
+ 
+    - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '17'
-
+ 
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.24.0'
         channel: 'stable'
-        cache: true
-
-    - name: Configure Gradle Properties
+ 
+    - name: Verify secrets are set
       run: |
-        mkdir -p ~/.gradle
-        cat > ~/.gradle/gradle.properties << 'EOF'
-        org.gradle.jvmargs=-Xmx6G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError -XX:+UseParallelGC
-        org.gradle.daemon=false
-        org.gradle.parallel=true
-        org.gradle.caching=true
-        org.gradle.configureondemand=true
-        kotlin.daemon.jvmargs=-Xmx2G
-        EOF
-
-    - name: Replace Android Build Files
-      run: |
-        # Remove old build files
-        rm -f android/app/build.gradle android/app/build.gradle.kts
-        
-        # Create settings.gradle.kts
-        cat > android/settings.gradle.kts << 'SETTINGSEOF'
-        pluginManagement {
-            val flutterSdkPath = run {
-                val properties = java.util.Properties()
-                file("local.properties").inputStream().use { properties.load(it) }
-                properties.getProperty("flutter.sdk") ?: throw GradleException("flutter.sdk not set")
-            }
-            includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
-            repositories {
-                google()
-                mavenCentral()
-                gradlePluginPortal()
-            }
-        }
-        plugins {
-            id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-            id("com.android.application") version "8.1.4" apply false
-            id("org.jetbrains.kotlin.android") version "1.9.10" apply false
-        }
-        include(":app")
-        SETTINGSEOF
-        
-        # Create root build.gradle.kts
-        cat > android/build.gradle.kts << 'BUILDEOF'
-        buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath("com.android.tools.build:gradle:8.1.4")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10")
-            }
-        }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-            }
-        }
-        tasks.register<Delete>("clean") {
-            delete(rootProject.layout.buildDirectory)
-        }
-        BUILDEOF
-        
-        # Create app/build.gradle.kts
-        cat > android/app/build.gradle.kts << 'APPEOF'
-        plugins {
-            id("com.android.application")
-            id("kotlin-android")
-            id("dev.flutter.flutter-gradle-plugin")
-        }
-
-        android {
-            namespace = "com.finspark.ai"
-            compileSdk = 34
-            ndkVersion = "25.2.9519653"
-            
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-            
-            kotlinOptions {
-                jvmTarget = "17"
-            }
-            
-            defaultConfig {
-                applicationId = "com.finspark.ai"
-                minSdk = 21
-                targetSdk = 34
-                versionCode = 1
-                versionName = "1.0.0"
-                multiDexEnabled = true
-                
-                ndk {
-                    abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
-                }
-            }
-            
-            signingConfigs {
-                create("release") {
-                    storeFile = file("upload-keystore.jks")
-                    storePassword = System.getenv("KEYSTORE_PASSWORD")
-                    keyAlias = System.getenv("KEY_ALIAS")
-                    keyPassword = System.getenv("KEY_PASSWORD")
-                }
-            }
-            
-            buildTypes {
-                release {
-                    signingConfig = signingConfigs.getByName("release")
-                    isMinifyEnabled = false
-                    proguardFiles(
-                        getDefaultProguardFile("proguard-android-optimize.txt"),
-                        "proguard-rules.pro"
-                    )
-                }
-            }
-            
-            packagingOptions {
-                resources {
-                    excludes += setOf(
-                        "META-INF/DEPENDENCIES",
-                        "META-INF/LICENSE",
-                        "META-INF/LICENSE.txt",
-                        "META-INF/license.txt",
-                        "META-INF/NOTICE",
-                        "META-INF/NOTICE.txt",
-                        "META-INF/notice.txt",
-                        "META-INF/*.kotlin_module"
-                    )
-                }
-            }
-        }
-
-        flutter {
-            source = "../.."
-        }
-
-        dependencies {
-            implementation("androidx.multidex:multidex:2.0.1")
-        }
-        APPEOF
-        
-        # Create gradle.properties in android directory
-        cat > android/gradle.properties << 'PROPEOF'
-        org.gradle.jvmargs=-Xmx6G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError -XX:+UseParallelGC
-        android.useAndroidX=true
-        android.enableJetifier=true
-        kotlin.version=1.9.10
-        android.defaults.buildfeatures.buildconfig=true
-        android.nonTransitiveRClass=false
-        android.enableR8.fullMode=false
-        PROPEOF
-
-    - name: Decode Keystore
-      run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-
-    - name: Verify Keystore
-      run: |
-        if [ ! -f android/app/upload-keystore.jks ]; then
-          echo "❌ Keystore file not found!"
+        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
+          echo "ERROR: SUPABASE_URL secret is not set!"
           exit 1
         fi
-        echo "✅ Keystore file exists"
-        ls -lh android/app/upload-keystore.jks
-
+        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
+          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"
+          exit 1
+        fi
+        echo "✓ Both secrets are set"
+ 
     - name: Create .env file
       run: |
-        cat > .env << EOF
-        SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-        SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-        GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
-        EOF
-
-    - name: Get Dependencies
-      run: flutter pub get
-
-    - name: Clean Flutter Build
-      run: flutter clean
-
+        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+        echo "✓ .env file created"
+       
+    - name: Verify .env file
+      run: |
+        if [ ! -f .env ]; then
+          echo "ERROR: .env file was not created!"
+          exit 1
+        fi
+        echo "✓ .env file exists"
+        echo "File size: $(wc -c < .env) bytes"
+        if [ $(wc -c < .env) -lt 100 ]; then
+          echo "WARNING: .env file seems too small (less than 100 bytes)!"
+          echo "This might indicate empty secret values."
+        fi
+        # Verify structure without revealing secrets
+        if grep -q "SUPABASE_URL=https://" .env; then
+          echo "✓ SUPABASE_URL has correct format"
+        else
+          echo "ERROR: SUPABASE_URL is missing or malformed!"
+          exit 1
+        fi
+        if grep -q "SUPABASE_ANON_KEY=eyJ" .env; then
+          echo "✓ SUPABASE_ANON_KEY has correct format"
+        else
+          echo "ERROR: SUPABASE_ANON_KEY is missing or malformed!"
+          exit 1
+        fi
+ 
+    - name: Decode keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+ 
+    - name: Create key.properties
+      run: |
+        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
+        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
+        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
+        echo "storeFile=upload-keystore.jks" >> android/key.properties
+ 
+    - name: Clean and get dependencies
+      run: |
+        flutter clean
+        flutter pub get
+   
+    - name: Generate app icons
+      run: |
+        echo "Generating launcher icons..."
+        dart run flutter_launcher_icons
+        echo "✓ Icons generated"
+ 
     - name: Build APK
+      run: flutter build apk --release --verbose
+ 
+    - name: Verify APK includes .env
       run: |
-        flutter build apk --release \
-          --target-platform android-arm64 \
-          --split-per-abi
-      env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      timeout-minutes: 25
-
-    - name: List APK Files
-      run: |
-        echo "=== Searching for APK files ==="
-        find build -name "*.apk" -type f || echo "No APK found"
-
-    - name: Upload APK (ARM64)
+        echo "=== Checking if .env is bundled in APK ==="
+        unzip -l build/app/outputs/flutter-apk/app-release.apk | grep "flutter_assets" | grep ".env" || echo "WARNING: .env might not be in APK!"
+ 
+    - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-arm64-v8a-release
-        path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-        if-no-files-found: warn
-
-    - name: Upload APK (ARMv7)
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-armeabi-v7a-release
-        path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
-        if-no-files-found: warn
-
-    - name: Upload APK (x86_64)
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-x86_64-release
-        path: build/app/outputs/flutter-apk/app-x86_64-release.apk
-        if-no-files-found: warn
-
+        name: app-release-apk
+        path: build/app/outputs/flutter-apk/app-release.apk
+ 
     - name: Build AAB
       run: flutter build appbundle --release
-      env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      timeout-minutes: 25
-
+ 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-bundle
+        name: app-release-aab
         path: build/app/outputs/bundle/release/app-release.aab
-        if-no-files-found: error
-
-    - name: Build Summary
-      if: always()
-      run: |
-        echo "=== Build Summary ==="
-        echo ""
-        
-        if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
-          echo "✅ APK ARM64: $(ls -lh build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | awk '{print $5}')"
-        fi
-        
-        if [ -f "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" ]; then
-          echo "✅ APK ARMv7: $(ls -lh build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk | awk '{print $5}')"
-        fi
-        
-        if [ -f "build/app/outputs/flutter-apk/app-x86_64-release.apk" ]; then
-          echo "✅ APK x86_64: $(ls -lh build/app/outputs/flutter-apk/app-x86_64-release.apk | awk '{print $5}')"
-        fi
-        
-        if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-          echo "✅ AAB: $(ls -lh build/app/outputs/bundle/release/app-release.aab | awk '{print $5}')"
-        else
-          echo "❌ AAB build failed"
-        fi
