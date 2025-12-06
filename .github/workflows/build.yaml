@@ -89,8 +89,8 @@ jobs:
       run: |
         mkdir -p ~/.gradle
         echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> ~/.gradle/gradle.properties
-        echo "org.gradle.parallel=true" >> ~/.gradle/gradle.properties
-        echo "org.gradle.caching=true" >> ~/.gradle/gradle.properties
+        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
+        echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
  
     - name: Clean and get dependencies
       run: |
@@ -102,18 +102,67 @@ jobs:
         echo "Generating launcher icons..."
         dart run flutter_launcher_icons
         echo "✓ Icons generated"
-
-    - name: Analyze Gradle configuration
-      run: |
-        cd android
-        ./gradlew --version
-        echo "=== Gradle Wrapper Properties ==="
-        cat gradle/wrapper/gradle-wrapper.properties
  
-    - name: Build APK
-      run: flutter build apk --release --verbose
+    - name: Build APK with detailed logging
+      id: build_apk
+      continue-on-error: true
+      run: |
+        echo "========================================"
+        echo "Starting APK build with maximum verbosity"
+        echo "========================================"
+        flutter build apk --release --verbose --no-tree-shake-icons 2>&1 | tee build_output.log
+        BUILD_EXIT_CODE=${PIPESTATUS[0]}
+        echo "Build exit code: $BUILD_EXIT_CODE"
+        
+        if [ $BUILD_EXIT_CODE -ne 0 ]; then
+          echo "========================================"
+          echo "BUILD FAILED - Extracting error details"
+          echo "========================================"
+          
+          # Extract actual error from logs
+          echo "--- GRADLE ERRORS ---"
+          grep -i "error" build_output.log || echo "No 'error' found"
+          
+          echo "--- FAILURE MESSAGES ---"
+          grep -i "failure\|failed\|exception" build_output.log | head -20 || echo "No failure messages found"
+          
+          echo "--- TASK FAILURES ---"
+          grep -A5 "FAILURE: Build failed with an exception" build_output.log || echo "No task failure details found"
+          
+          echo "--- LAST 50 LINES OF OUTPUT ---"
+          tail -50 build_output.log
+        fi
+        
+        exit $BUILD_EXIT_CODE
+
+    - name: Upload complete build log
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: complete-build-log
+        path: build_output.log
+        retention-days: 5
+
+    - name: Try direct Gradle build for more details
+      if: failure()
+      run: |
+        echo "========================================"
+        echo "Attempting direct Gradle build"
+        echo "========================================"
+        cd android
+        ./gradlew assembleRelease --stacktrace --info 2>&1 | tee ../gradle_direct.log
+      continue-on-error: true
+
+    - name: Upload Gradle direct log
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gradle-direct-log
+        path: gradle_direct.log
+        retention-days: 5
  
     - name: Verify APK was created
+      if: steps.build_apk.outcome == 'success'
       run: |
         if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
           echo "✓ APK created successfully"
@@ -124,15 +173,18 @@ jobs:
         fi
  
     - name: Upload APK
+      if: steps.build_apk.outcome == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: app-release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
  
     - name: Build AAB
+      if: steps.build_apk.outcome == 'success'
       run: flutter build appbundle --release
  
     - name: Upload AAB
+      if: steps.build_apk.outcome == 'success'
       uses: actions/upload-artifact@v4
       with:
         name: app-release-aab
