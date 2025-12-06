@@ -96,7 +96,7 @@ jobs:
         cat > android/app/build.gradle.kts << 'GRADLE_EOF'
         plugins {
             id("com.android.application")
-            id("org.jetbrains.kotlin.android")
+            id("org.jetbrains.kotlin.android") version "1.9.0" apply true
             id("dev.flutter.flutter-gradle-plugin")
         }
 
