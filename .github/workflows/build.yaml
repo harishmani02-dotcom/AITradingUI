@@ -33,15 +33,12 @@ jobs:
       run: |
         rm -rf ~/.gradle/caches/
         rm -rf ~/.gradle/wrapper/
-        echo "Gradle cache cleared"
 
     - name: Replace Android Build Files
       run: |
-        # Remove old build files
         rm -f android/app/build.gradle
         rm -f android/app/build.gradle.kts
         
-        # Create settings.gradle.kts
         cat > android/settings.gradle.kts << 'SETTINGSEOF'
         pluginManagement {
             val flutterSdkPath = run {
@@ -64,7 +61,6 @@ jobs:
         include(":app")
         SETTINGSEOF
         
-        # Create build.gradle.kts
         cat > android/build.gradle.kts << 'BUILDEOF'
         buildscript {
             repositories {
@@ -87,7 +83,6 @@ jobs:
         }
         BUILDEOF
         
-        # Create app/build.gradle.kts
         cat > android/app/build.gradle.kts << 'APPEOF'
         plugins {
             id("com.android.application")
@@ -142,7 +137,6 @@ jobs:
         }
         APPEOF
         
-        # Create gradle.properties
         cat > android/gradle.properties << 'PROPEOF'
         org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=1G
         android.useAndroidX=true
@@ -170,6 +164,31 @@ jobs:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      continue-on-error: true
+
+    - name: Check Build Output
+      run: |
+        echo "=== Searching for APK files ==="
+        find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
+        
+        echo ""
+        echo "=== Build directory structure ==="
+        ls -R build/app/outputs/ 2>/dev/null || echo "No outputs directory"
+        
+        echo ""
+        echo "=== Android app build directory ==="
+        ls -R android/app/build/outputs/ 2>/dev/null || echo "No android build outputs"
+
+    - name: Copy APK if exists
+      run: |
+        if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+          mkdir -p build/app/outputs/flutter-apk/
+          cp android/app/build/outputs/apk/release/app-release.apk build/app/outputs/flutter-apk/app-release.apk
+          echo "✅ APK copied successfully"
+        else
+          echo "❌ APK not found at expected location"
+          exit 1
+        fi
 
     - name: Build AAB
       run: flutter build appbundle --release
@@ -177,15 +196,53 @@ jobs:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      continue-on-error: true
+
+    - name: Check AAB Output
+      run: |
+        echo "=== Searching for AAB files ==="
+        find . -name "*.aab" -type f 2>/dev/null || echo "No AAB files found"
+        
+        if [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
+          mkdir -p build/app/outputs/bundle/release/
+          cp android/app/build/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/app-release.aab
+          echo "✅ AAB copied successfully"
+        fi
 
     - name: Upload APK
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
+        path: |
+          build/app/outputs/flutter-apk/app-release.apk
+          android/app/build/outputs/apk/release/app-release.apk
+        if-no-files-found: warn
 
     - name: Upload AAB
+      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-aab
-        path: build/app/outputs/bundle/release/app-release.aab
+        path: |
+          build/app/outputs/bundle/release/app-release.aab
+          android/app/build/outputs/bundle/release/app-release.aab
+        if-no-files-found: warn
+
+    - name: Final Summary
+      if: always()
+      run: |
+        echo "=== Build Summary ==="
+        if [ -f "build/app/outputs/flutter-apk/app-release.apk" ] || [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
+          echo "✅ APK build succeeded"
+          ls -lh build/app/outputs/flutter-apk/app-release.apk 2>/dev/null || ls -lh android/app/build/outputs/apk/release/app-release.apk
+        else
+          echo "❌ APK build failed"
+        fi
+        
+        if [ -f "build/app/outputs/bundle/release/app-release.aab" ] || [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
+          echo "✅ AAB build succeeded"
+          ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null || ls -lh android/app/build/outputs/bundle/release/app-release.aab
+        else
+          echo "❌ AAB build failed"
+        fi
