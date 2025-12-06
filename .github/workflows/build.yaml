@@ -82,7 +82,7 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath("com.android.tools.build:gradle:8.1.0")
+                classpath("com.android.tools.build:gradle:7.4.2")
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
             }
         }
@@ -117,7 +117,6 @@ jobs:
         android {
             namespace = "com.finspark.ai"
             compileSdk = 34
-            ndkVersion = "25.1.8937393"
             compileOptions {
                 sourceCompatibility = JavaVersion.VERSION_17
                 targetCompatibility = JavaVersion.VERSION_17
@@ -146,14 +145,10 @@ jobs:
                 }
             }
             buildTypes {
-                release {
+                getByName("release") {
                     signingConfig = signingConfigs.getByName("release")
-                    isMinifyEnabled = true
-                    isShrinkResources = true
-                    proguardFiles(
-                        getDefaultProguardFile("proguard-android-optimize.txt"),
-                        "proguard-rules.pro"
-                    )
+                    isMinifyEnabled = false
+                    isShrinkResources = false
                 }
             }
         }
@@ -161,7 +156,7 @@ jobs:
             source = "../.."
         }
         dependencies {
-            implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0")
+            implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0")
         }
         EOF
 
@@ -172,7 +167,7 @@ jobs:
         distributionPath=wrapper/dists
         zipStoreBase=GRADLE_USER_HOME
         zipStorePath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-all.zip
+        distributionUrl=https\://services.gradle.org/distributions/gradle-7.6.3-all.zip
         EOF
 
     - name: Decode Keystore
