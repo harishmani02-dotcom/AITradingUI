@@ -28,9 +28,6 @@ jobs:
       uses: subosito/flutter-action@v2
       with:
         flutter-version: '3.24.0' # Use latest stable version
-        environment:
-  sdk: ">=3.0.0 <4.0.0"
-  flutter: ">=3.0.0"
         channel: 'stable'
 
     # Step 4: Install dependencies
