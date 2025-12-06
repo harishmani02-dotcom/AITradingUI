@@ -1,4 +1,10 @@
-- name: Update app/build.gradle.kts
+- name: Remove old build.gradle files
+      run: |
+        rm -f android/app/build.gradle
+        rm -f android/app/build.gradle.kts
+        echo "Old build files removed"
+
+    - name: Update app/build.gradle.kts
       run: |
         cat > android/app/build.gradle.kts << 'EOF'
         import java.util.Properties
@@ -63,13 +69,8 @@
             buildTypes {
                 getByName("release") {
                     signingConfig = signingConfigs.getByName("release")
-                    // Disable minification and shrinking for faster builds
-                    isMinifyEnabled = false
-                    isShrinkResources = false
                 }
                 getByName("debug") {
-                    isMinifyEnabled = false
-                    isShrinkResources = false
                 }
             }
             
@@ -97,3 +98,10 @@
         dependencies {
             implementation("androidx.multidex:multidex:2.0.1")
         }
+        EOF
+        
+    - name: Verify build.gradle.kts content
+      run: |
+        echo "=== Contents of android/app/build.gradle.kts ==="
+        cat android/app/build.gradle.kts
+        echo "=== End of file ==="
