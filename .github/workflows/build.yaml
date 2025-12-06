@@ -79,7 +79,7 @@ jobs:
             }
         }
         tasks.register<Delete>("clean") {
-            delete(rootProject.buildDir)
+            delete(rootProject.layout.buildDirectory)
         }
         BUILDEOF
         
@@ -108,7 +108,7 @@ jobs:
                 minSdk = 21
                 targetSdk = 34
                 versionCode = 1
-                versionName = "1.0"
+                versionName = "1.0.0"
                 multiDexEnabled = true
             }
             
@@ -124,6 +124,8 @@ jobs:
             buildTypes {
                 release {
                     signingConfig = signingConfigs.getByName("release")
+                    isMinifyEnabled = false
+                    isShrinkResources = false
                 }
             }
         }
@@ -138,10 +140,12 @@ jobs:
         APPEOF
         
         cat > android/gradle.properties << 'PROPEOF'
-        org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=1G
+        org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=1G -XX:+HeapDumpOnOutOfMemoryError
         android.useAndroidX=true
         android.enableJetifier=true
         kotlin.version=1.9.24
+        android.defaults.buildfeatures.buildconfig=true
+        android.nonTransitiveRClass=false
         PROPEOF
 
     - name: Decode Keystore
@@ -158,91 +162,78 @@ jobs:
     - name: Get Dependencies
       run: flutter pub get
 
+    - name: Run Flutter Doctor
+      run: flutter doctor -v
+
     - name: Build APK
-      run: flutter build apk --release
+      run: flutter build apk --release --verbose
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      continue-on-error: true
 
-    - name: Check Build Output
+    - name: Verify APK Build
       run: |
-        echo "=== Searching for APK files ==="
-        find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
-        
-        echo ""
-        echo "=== Build directory structure ==="
-        ls -R build/app/outputs/ 2>/dev/null || echo "No outputs directory"
-        
-        echo ""
-        echo "=== Android app build directory ==="
-        ls -R android/app/build/outputs/ 2>/dev/null || echo "No android build outputs"
-
-    - name: Copy APK if exists
-      run: |
-        if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
-          mkdir -p build/app/outputs/flutter-apk/
-          cp android/app/build/outputs/apk/release/app-release.apk build/app/outputs/flutter-apk/app-release.apk
-          echo "✅ APK copied successfully"
+        APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+        if [ -f "$APK_PATH" ]; then
+          echo "✅ APK built successfully"
+          echo "APK Size: $(du -h $APK_PATH | cut -f1)"
+          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
         else
-          echo "❌ APK not found at expected location"
+          echo "❌ APK not found at $APK_PATH"
+          echo "Searching for APK files..."
+          find build -name "*.apk" -type f
           exit 1
         fi
 
     - name: Build AAB
-      run: flutter build appbundle --release
+      run: flutter build appbundle --release --verbose
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      continue-on-error: true
 
-    - name: Check AAB Output
+    - name: Verify AAB Build
       run: |
-        echo "=== Searching for AAB files ==="
-        find . -name "*.aab" -type f 2>/dev/null || echo "No AAB files found"
-        
-        if [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
-          mkdir -p build/app/outputs/bundle/release/
-          cp android/app/build/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/app-release.aab
-          echo "✅ AAB copied successfully"
+        AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
+        if [ -f "$AAB_PATH" ]; then
+          echo "✅ AAB built successfully"
+          echo "AAB Size: $(du -h $AAB_PATH | cut -f1)"
+          echo "AAB_PATH=$AAB_PATH" >> $GITHUB_ENV
+        else
+          echo "❌ AAB not found at $AAB_PATH"
+          echo "Searching for AAB files..."
+          find build -name "*.aab" -type f
+          exit 1
         fi
 
     - name: Upload APK
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-apk
-        path: |
-          build/app/outputs/flutter-apk/app-release.apk
-          android/app/build/outputs/apk/release/app-release.apk
-        if-no-files-found: warn
+        path: build/app/outputs/flutter-apk/app-release.apk
+        if-no-files-found: error
 
     - name: Upload AAB
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-aab
-        path: |
-          build/app/outputs/bundle/release/app-release.aab
-          android/app/build/outputs/bundle/release/app-release.aab
-        if-no-files-found: warn
+        path: build/app/outputs/bundle/release/app-release.aab
+        if-no-files-found: error
 
-    - name: Final Summary
+    - name: Build Summary
       if: always()
       run: |
         echo "=== Build Summary ==="
-        if [ -f "build/app/outputs/flutter-apk/app-release.apk" ] || [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
-          echo "✅ APK build succeeded"
-          ls -lh build/app/outputs/flutter-apk/app-release.apk 2>/dev/null || ls -lh android/app/build/outputs/apk/release/app-release.apk
+        echo ""
+        if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+          echo "✅ APK: $(ls -lh build/app/outputs/flutter-apk/app-release.apk | awk '{print $5}')"
         else
           echo "❌ APK build failed"
         fi
         
-        if [ -f "build/app/outputs/bundle/release/app-release.aab" ] || [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
-          echo "✅ AAB build succeeded"
-          ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null || ls -lh android/app/build/outputs/bundle/release/app-release.aab
+        if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+          echo "✅ AAB: $(ls -lh build/app/outputs/bundle/release/app-release.aab | awk '{print $5}')"
         else
           echo "❌ AAB build failed"
         fi
