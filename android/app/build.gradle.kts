@@ -41,6 +41,7 @@ android {
         targetSdk = 34
         versionCode = flutterVersionCode
         versionName = flutterVersionName
+        multiDexEnabled = true
     }
 
     signingConfigs {
@@ -59,12 +60,37 @@ android {
             isShrinkResources = false
         }
     }
+
+    packagingOptions {
+        resources {
+            excludes += listOf(
+                "META-INF/DEPENDENCIES",
+                "META-INF/LICENSE",
+                "META-INF/LICENSE.txt",
+                "META-INF/license.txt",
+                "META-INF/NOTICE",
+                "META-INF/NOTICE.txt",
+                "META-INF/notice.txt",
+                "META-INF/ASL2.0",
+                "META-INF/*.kotlin_module"
+            )
+        }
+    }
 }
 
 flutter {
     source = "../.."
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0")
+        force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0")
+    }
+}
+
 dependencies {
+    implementation("androidx.multidex:multidex:2.0.1")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0")
 }
