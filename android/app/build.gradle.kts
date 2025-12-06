@@ -7,6 +7,11 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Add these lines
+kotlin {
+    jvmToolchain(17)
+}
+
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
 if (localPropertiesFile.exists()) {
@@ -83,3 +88,4 @@ flutter {
 dependencies {
     implementation("androidx.multidex:multidex:2.0.1")
 }
+
