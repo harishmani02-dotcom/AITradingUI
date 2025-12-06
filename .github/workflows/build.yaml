@@ -29,10 +29,14 @@ jobs:
         channel: 'stable'
         cache: true
 
-    - name: Clear Gradle Cache
+    - name: Stop Gradle Daemons and Clean Cache
       run: |
+        pkill -f gradle || true
         rm -rf ~/.gradle/caches/
         rm -rf ~/.gradle/wrapper/
+        rm -rf ~/.gradle/daemon/
+        rm -rf android/.gradle/
+        rm -rf android/app/.gradle/
 
     - name: Replace Android Build Files
       run: |
@@ -142,6 +146,8 @@ jobs:
         android.useAndroidX=true
         android.enableJetifier=true
         kotlin.version=1.9.24
+        org.gradle.daemon=false
+        org.gradle.parallel=false
         PROPEOF
 
     - name: Decode Keystore
@@ -158,91 +164,62 @@ jobs:
     - name: Get Dependencies
       run: flutter pub get
 
-    - name: Build APK
-      run: flutter build apk --release
+    - name: Build APK Directly with Gradle
+      run: |
+        cd android
+        ./gradlew assembleRelease --no-daemon --stacktrace
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      continue-on-error: true
 
-    - name: Check Build Output
+    - name: Build AAB Directly with Gradle
       run: |
-        echo "=== Searching for APK files ==="
-        find . -name "*.apk" -type f 2>/dev/null || echo "No APK files found"
-        
-        echo ""
-        echo "=== Build directory structure ==="
-        ls -R build/app/outputs/ 2>/dev/null || echo "No outputs directory"
-        
-        echo ""
-        echo "=== Android app build directory ==="
-        ls -R android/app/build/outputs/ 2>/dev/null || echo "No android build outputs"
+        cd android
+        ./gradlew bundleRelease --no-daemon --stacktrace
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-    - name: Copy APK if exists
+    - name: Copy Outputs to Standard Location
       run: |
+        mkdir -p build/app/outputs/flutter-apk/
+        mkdir -p build/app/outputs/bundle/release/
+        
         if [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
-          mkdir -p build/app/outputs/flutter-apk/
           cp android/app/build/outputs/apk/release/app-release.apk build/app/outputs/flutter-apk/app-release.apk
-          echo "✅ APK copied successfully"
+          echo "✅ APK copied"
+          ls -lh build/app/outputs/flutter-apk/app-release.apk
         else
-          echo "❌ APK not found at expected location"
+          echo "❌ APK not found"
+          exit 1
+        fi
+        
+        if [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
+          cp android/app/build/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/app-release.aab
+          echo "✅ AAB copied"
+          ls -lh build/app/outputs/bundle/release/app-release.aab
+        else
+          echo "❌ AAB not found"
           exit 1
         fi
 
-    - name: Build AAB
-      run: flutter build appbundle --release
-      env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-      continue-on-error: true
-
-    - name: Check AAB Output
-      run: |
-        echo "=== Searching for AAB files ==="
-        find . -name "*.aab" -type f 2>/dev/null || echo "No AAB files found"
-        
-        if [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
-          mkdir -p build/app/outputs/bundle/release/
-          cp android/app/build/outputs/bundle/release/app-release.aab build/app/outputs/bundle/release/app-release.aab
-          echo "✅ AAB copied successfully"
-        fi
-
     - name: Upload APK
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-apk
-        path: |
-          build/app/outputs/flutter-apk/app-release.apk
-          android/app/build/outputs/apk/release/app-release.apk
-        if-no-files-found: warn
+        path: build/app/outputs/flutter-apk/app-release.apk
 
     - name: Upload AAB
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-aab
-        path: |
-          build/app/outputs/bundle/release/app-release.aab
-          android/app/build/outputs/bundle/release/app-release.aab
-        if-no-files-found: warn
+        path: build/app/outputs/bundle/release/app-release.aab
 
-    - name: Final Summary
+    - name: Build Summary
       if: always()
       run: |
-        echo "=== Build Summary ==="
-        if [ -f "build/app/outputs/flutter-apk/app-release.apk" ] || [ -f "android/app/build/outputs/apk/release/app-release.apk" ]; then
-          echo "✅ APK build succeeded"
-          ls -lh build/app/outputs/flutter-apk/app-release.apk 2>/dev/null || ls -lh android/app/build/outputs/apk/release/app-release.apk
-        else
-          echo "❌ APK build failed"
-        fi
-        
-        if [ -f "build/app/outputs/bundle/release/app-release.aab" ] || [ -f "android/app/build/outputs/bundle/release/app-release.aab" ]; then
-          echo "✅ AAB build succeeded"
-          ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null || ls -lh android/app/build/outputs/bundle/release/app-release.aab
-        else
-          echo "❌ AAB build failed"
-        fi
+        echo "=== Build Complete ==="
+        echo "APK: $(ls -lh build/app/outputs/flutter-apk/app-release.apk 2>/dev/null || echo 'Not found')"
+        echo "AAB: $(ls -lh build/app/outputs/bundle/release/app-release.aab 2>/dev/null || echo 'Not found')"
