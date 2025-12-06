@@ -1,12 +1,14 @@
 buildscript {
-    extra["kotlin_version"] = "1.8.0"
+    val kotlinVersion = "1.8.0"
+    
     repositories {
         google()
         mavenCentral()
     }
+ 
     dependencies {
         classpath("com.android.tools.build:gradle:8.1.0")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${extra["kotlin_version"]}")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
     }
 }
  
@@ -17,25 +19,17 @@ allprojects {
     }
 }
  
-rootProject.buildDir = '../build'
+rootProject.layout.buildDirectory.set(File("../build"))
+ 
 subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
-}
-subprojects {
-    project.evaluationDependsOn(':app')
-    
-    // Force compileSdk for all subprojects
-    afterEvaluate { project ->
-        if (project.hasProperty("android")) {
-            android {
-                compileSdkVersion 34
-            }
-        }
-    }
+    project.layout.buildDirectory.set(File(rootProject.layout.buildDirectory.get().asFile, project.name))
 }
  
-tasks.register("clean", Delete) {
-    delete rootProject.buildDir
+subprojects {
+    project.evaluationDependsOn(":app")
 }
  
-
+tasks.register<Delete>("clean") {
+    delete(rootProject.layout.buildDirectory)
+}
+ 
