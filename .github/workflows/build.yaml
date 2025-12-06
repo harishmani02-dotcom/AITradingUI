@@ -68,6 +68,17 @@ jobs:
     - name: Update build.gradle.kts
       run: |
         cat > android/build.gradle.kts << 'GRADLE_EOF'
+        buildscript {
+            repositories {
+                google()
+                mavenCentral()
+            }
+            dependencies {
+                classpath("com.android.tools.build:gradle:7.4.2")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.8.22")
+            }
+        }
+
         allprojects {
             repositories {
                 google()
@@ -150,7 +161,7 @@ jobs:
         distributionPath=wrapper/dists
         zipStoreBase=GRADLE_USER_HOME
         zipStorePath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-8.7-all.zip
+        distributionUrl=https\://services.gradle.org/distributions/gradle-7.6.4-all.zip
         GRADLE_EOF
 
     - name: Decode Keystore
