@@ -51,6 +51,34 @@ jobs:
         rm -rf ~/.gradle/wrapper/
         echo "Gradle cache cleared"
 
+    - name: Check Original Build File
+      run: |
+        echo "=== Original android/app/build.gradle.kts (if exists) ==="
+        if [ -f android/app/build.gradle.kts ]; then
+          cat android/app/build.gradle.kts
+        else
+          echo "File does not exist"
+        fi
+        
+        if [ -f android/app/build.gradle ]; then
+          echo "=== Original android/app/build.gradle (if exists) ==="
+          cat android/app/build.gradle
+        else
+          echo "build.gradle does not exist"
+        fi
+
+    - name: Search for shrinkResources Before Changes
+      run: |
+        echo "=== Searching for shrinkResources in original files ==="
+        grep -rn "shrinkResources\|isShrinkResources" android/ || echo "No matches found"
+
+    - name: Force Delete All Build Files
+      run: |
+        rm -f android/app/build.gradle
+        rm -f android/app/build.gradle.kts
+        ls -la android/app/
+        echo "Build files deleted"
+
     - name: Update settings.gradle.kts
       run: |
         cat > android/settings.gradle.kts << 'EOF'
@@ -104,12 +132,9 @@ jobs:
         }
         EOF
 
-    - name: Update app/build.gradle.kts
+    - name: Create New app/build.gradle.kts
       run: |
         cat > android/app/build.gradle.kts << 'EOF'
-        import java.util.Properties
-        import java.io.FileInputStream
-        
         plugins {
             id("com.android.application")
             id("kotlin-android")
@@ -119,15 +144,6 @@ jobs:
         kotlin {
             jvmToolchain(17)
         }
-        
-        val localProperties = Properties()
-        val localPropertiesFile = rootProject.file("local.properties")
-        if (localPropertiesFile.exists()) {
-            localProperties.load(FileInputStream(localPropertiesFile))
-        }
-        
-        val flutterVersionCode = localProperties.getProperty("flutter.versionCode")?.toIntOrNull() ?: 1
-        val flutterVersionName = localProperties.getProperty("flutter.versionName") ?: "1.0"
         
         android {
             namespace = "com.finspark.ai"
@@ -152,8 +168,8 @@ jobs:
                 applicationId = "com.finspark.ai"
                 minSdk = 21
                 targetSdk = 34
-                versionCode = flutterVersionCode
-                versionName = flutterVersionName
+                versionCode = 1
+                versionName = "1.0"
                 multiDexEnabled = true
             }
             
@@ -167,18 +183,14 @@ jobs:
             }
             
             buildTypes {
-                getByName("release") {
+                release {
                     signingConfig = signingConfigs.getByName("release")
-                    isMinifyEnabled = false
-                }
-                getByName("debug") {
-                    isMinifyEnabled = false
                 }
             }
             
             packaging {
                 resources {
-                    excludes += listOf(
+                    excludes += setOf(
                         "META-INF/DEPENDENCIES",
                         "META-INF/LICENSE",
                         "META-INF/LICENSE.txt",
@@ -201,6 +213,25 @@ jobs:
             implementation("androidx.multidex:multidex:2.0.1")
         }
         EOF
+        
+        chmod 644 android/app/build.gradle.kts
+        echo "New build.gradle.kts created"
+
+    - name: Verify New Build File
+      run: |
+        echo "=== New android/app/build.gradle.kts content ==="
+        cat android/app/build.gradle.kts
+        echo ""
+        echo "=== Checking for problematic settings ==="
+        if grep -i "shrink" android/app/build.gradle.kts; then
+          echo "❌ ERROR: Found shrink settings!"
+          exit 1
+        fi
+        if grep -i "minify" android/app/build.gradle.kts; then
+          echo "❌ ERROR: Found minify settings!"
+          exit 1
+        fi
+        echo "✅ No shrink or minify settings found"
 
     - name: Update gradle.properties
       run: |
@@ -210,6 +241,8 @@ jobs:
         android.enableJetifier=true
         kotlin.version=1.9.24
         kotlin.code.style=official
+        android.defaults.buildfeatures.buildconfig=true
+        android.nonTransitiveRClass=false
         EOF
 
     - name: Update gradle-wrapper.properties
@@ -245,9 +278,9 @@ jobs:
     - name: Clean Flutter Build
       run: flutter clean
 
-    - name: Build APK
+    - name: Build APK with Debug
       run: |
-        flutter build apk --release \
+        flutter build apk --release --verbose \
           --dart-define=GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }} \
           --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
           --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
