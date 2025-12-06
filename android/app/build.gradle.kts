@@ -1,10 +1,18 @@
-- name: Remove old build.gradle files
+- name: Debug Android Structure
       run: |
-        rm -f android/app/build.gradle
-        rm -f android/app/build.gradle.kts
-        echo "Old build files removed"
+        echo "=== Checking Android directory structure ==="
+        ls -la android/
+        ls -la android/app/
+        echo "=== Checking for existing build files ==="
+        find android/app -name "build.gradle*" -type f
+        
+    - name: Force Remove All Build Files
+      run: |
+        find android/app -name "build.gradle" -type f -delete
+        find android/app -name "build.gradle.kts" -type f -delete
+        echo "All build.gradle files removed"
 
-    - name: Update app/build.gradle.kts
+    - name: Create New app/build.gradle.kts
       run: |
         cat > android/app/build.gradle.kts << 'EOF'
         import java.util.Properties
@@ -70,8 +78,6 @@
                 getByName("release") {
                     signingConfig = signingConfigs.getByName("release")
                 }
-                getByName("debug") {
-                }
             }
             
             packaging {
@@ -99,9 +105,30 @@
             implementation("androidx.multidex:multidex:2.0.1")
         }
         EOF
-        
-    - name: Verify build.gradle.kts content
+
+    - name: Verify No Shrink Settings
       run: |
-        echo "=== Contents of android/app/build.gradle.kts ==="
+        echo "=== Final build.gradle.kts content ==="
         cat android/app/build.gradle.kts
-        echo "=== End of file ==="
+        echo ""
+        echo "=== Checking for problematic settings ==="
+        if grep -i "shrink" android/app/build.gradle.kts; then
+          echo "ERROR: Found shrink settings!"
+          exit 1
+        fi
+        if grep -i "minify" android/app/build.gradle.kts; then
+          echo "ERROR: Found minify settings!"
+          exit 1
+        fi
+        echo "✓ No shrink or minify settings found"
+        
+    - name: Check for other build files
+      run: |
+        echo "=== Searching for any other build configuration files ==="
+        find android -name "*.gradle*" -type f | while read file; do
+          echo "--- $file ---"
+          if grep -i "shrinkResources\|isShrinkResources" "$file" 2>/dev/null; then
+            echo "⚠️  Found shrinkResources in: $file"
+            grep -n "shrinkResources\|isShrinkResources" "$file"
+          fi
+        done
