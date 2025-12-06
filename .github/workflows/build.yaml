@@ -82,7 +82,7 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath("com.android.tools.build:gradle:7.4.2")
+                classpath("com.android.tools.build:gradle:8.3.0")
                 classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0")
             }
         }
@@ -149,10 +149,12 @@ jobs:
                 getByName("release") {
                     signingConfig = signingConfigs.getByName("release")
                     isMinifyEnabled = false
-                    isShrinkResources = false
+                }
+                getByName("debug") {
+                    isMinifyEnabled = false
                 }
             }
-            packagingOptions {
+            packaging {
                 resources {
                     excludes += listOf(
                         "META-INF/DEPENDENCIES",
@@ -171,16 +173,8 @@ jobs:
         flutter {
             source = "../.."
         }
-        configurations.all {
-            resolutionStrategy {
-                force("org.jetbrains.kotlin:kotlin-stdlib:1.9.0")
-                force("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0")
-                force("org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.0")
-            }
-        }
         dependencies {
             implementation("androidx.multidex:multidex:2.0.1")
-            implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0")
         }
         EOF
 
@@ -191,7 +185,7 @@ jobs:
         distributionPath=wrapper/dists
         zipStoreBase=GRADLE_USER_HOME
         zipStorePath=wrapper/dists
-        distributionUrl=https\://services.gradle.org/distributions/gradle-7.6.3-all.zip
+        distributionUrl=https\://services.gradle.org/distributions/gradle-8.4-all.zip
         EOF
 
     - name: Decode Keystore
