@@ -82,6 +82,9 @@ jobs:
         echo "storeFile=upload-keystore.jks" >> android/key.properties
         echo "✓ key.properties created"
 
+    - name: Grant execute permission for gradlew
+      run: chmod +x android/gradlew
+
     - name: Configure Gradle
       run: |
         mkdir -p ~/.gradle
@@ -108,17 +111,7 @@ jobs:
         cat gradle/wrapper/gradle-wrapper.properties
  
     - name: Build APK
-      run: |
-        flutter build apk --release --verbose 2>&1 | tee build.log
-        exit ${PIPESTATUS[0]}
-      continue-on-error: true
-
-    - name: Upload build log
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-log
-        path: build.log
+      run: flutter build apk --release --verbose
  
     - name: Verify APK was created
       run: |
@@ -131,18 +124,15 @@ jobs:
         fi
  
     - name: Upload APK
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-apk
         path: build/app/outputs/flutter-apk/app-release.apk
  
     - name: Build AAB
-      if: success()
       run: flutter build appbundle --release
  
     - name: Upload AAB
-      if: success()
       uses: actions/upload-artifact@v4
       with:
         name: app-release-aab
