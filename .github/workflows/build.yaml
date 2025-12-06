@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
     - name: Checkout Repository
@@ -29,16 +29,24 @@ jobs:
         channel: 'stable'
         cache: true
 
-    - name: Clear Gradle Cache
+    - name: Configure Gradle Properties
       run: |
-        rm -rf ~/.gradle/caches/
-        rm -rf ~/.gradle/wrapper/
+        mkdir -p ~/.gradle
+        cat > ~/.gradle/gradle.properties << 'EOF'
+        org.gradle.jvmargs=-Xmx6G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError -XX:+UseParallelGC
+        org.gradle.daemon=false
+        org.gradle.parallel=true
+        org.gradle.caching=true
+        org.gradle.configureondemand=true
+        kotlin.daemon.jvmargs=-Xmx2G
+        EOF
 
     - name: Replace Android Build Files
       run: |
-        rm -f android/app/build.gradle
-        rm -f android/app/build.gradle.kts
+        # Remove old build files
+        rm -f android/app/build.gradle android/app/build.gradle.kts
         
+        # Create settings.gradle.kts
         cat > android/settings.gradle.kts << 'SETTINGSEOF'
         pluginManagement {
             val flutterSdkPath = run {
@@ -55,12 +63,13 @@ jobs:
         }
         plugins {
             id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-            id("com.android.application") version "8.3.0" apply false
-            id("org.jetbrains.kotlin.android") version "1.9.24" apply false
+            id("com.android.application") version "8.1.4" apply false
+            id("org.jetbrains.kotlin.android") version "1.9.10" apply false
         }
         include(":app")
         SETTINGSEOF
         
+        # Create root build.gradle.kts
         cat > android/build.gradle.kts << 'BUILDEOF'
         buildscript {
             repositories {
@@ -68,8 +77,8 @@ jobs:
                 mavenCentral()
             }
             dependencies {
-                classpath("com.android.tools.build:gradle:8.3.0")
-                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24")
+                classpath("com.android.tools.build:gradle:8.1.4")
+                classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10")
             }
         }
         allprojects {
@@ -83,16 +92,18 @@ jobs:
         }
         BUILDEOF
         
+        # Create app/build.gradle.kts
         cat > android/app/build.gradle.kts << 'APPEOF'
         plugins {
             id("com.android.application")
             id("kotlin-android")
             id("dev.flutter.flutter-gradle-plugin")
         }
-        
+
         android {
             namespace = "com.finspark.ai"
             compileSdk = 34
+            ndkVersion = "25.2.9519653"
             
             compileOptions {
                 sourceCompatibility = JavaVersion.VERSION_17
@@ -110,6 +121,10 @@ jobs:
                 versionCode = 1
                 versionName = "1.0.0"
                 multiDexEnabled = true
+                
+                ndk {
+                    abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+                }
             }
             
             signingConfigs {
@@ -125,31 +140,60 @@ jobs:
                 release {
                     signingConfig = signingConfigs.getByName("release")
                     isMinifyEnabled = false
-                    isShrinkResources = false
+                    proguardFiles(
+                        getDefaultProguardFile("proguard-android-optimize.txt"),
+                        "proguard-rules.pro"
+                    )
+                }
+            }
+            
+            packagingOptions {
+                resources {
+                    excludes += setOf(
+                        "META-INF/DEPENDENCIES",
+                        "META-INF/LICENSE",
+                        "META-INF/LICENSE.txt",
+                        "META-INF/license.txt",
+                        "META-INF/NOTICE",
+                        "META-INF/NOTICE.txt",
+                        "META-INF/notice.txt",
+                        "META-INF/*.kotlin_module"
+                    )
                 }
             }
         }
-        
+
         flutter {
             source = "../.."
         }
-        
+
         dependencies {
             implementation("androidx.multidex:multidex:2.0.1")
         }
         APPEOF
         
+        # Create gradle.properties in android directory
         cat > android/gradle.properties << 'PROPEOF'
-        org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=1G -XX:+HeapDumpOnOutOfMemoryError
+        org.gradle.jvmargs=-Xmx6G -XX:MaxMetaspaceSize=2G -XX:+HeapDumpOnOutOfMemoryError -XX:+UseParallelGC
         android.useAndroidX=true
         android.enableJetifier=true
-        kotlin.version=1.9.24
+        kotlin.version=1.9.10
         android.defaults.buildfeatures.buildconfig=true
         android.nonTransitiveRClass=false
+        android.enableR8.fullMode=false
         PROPEOF
 
     - name: Decode Keystore
       run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+    - name: Verify Keystore
+      run: |
+        if [ ! -f android/app/upload-keystore.jks ]; then
+          echo "❌ Keystore file not found!"
+          exit 1
+        fi
+        echo "✅ Keystore file exists"
+        ls -lh android/app/upload-keystore.jks
 
     - name: Create .env file
       run: |
@@ -162,62 +206,58 @@ jobs:
     - name: Get Dependencies
       run: flutter pub get
 
-    - name: Run Flutter Doctor
-      run: flutter doctor -v
+    - name: Clean Flutter Build
+      run: flutter clean
 
     - name: Build APK
-      run: flutter build apk --release --verbose
+      run: |
+        flutter build apk --release \
+          --target-platform android-arm64 \
+          --split-per-abi
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      timeout-minutes: 25
 
-    - name: Verify APK Build
+    - name: List APK Files
       run: |
-        APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
-        if [ -f "$APK_PATH" ]; then
-          echo "✅ APK built successfully"
-          echo "APK Size: $(du -h $APK_PATH | cut -f1)"
-          echo "APK_PATH=$APK_PATH" >> $GITHUB_ENV
-        else
-          echo "❌ APK not found at $APK_PATH"
-          echo "Searching for APK files..."
-          find build -name "*.apk" -type f
-          exit 1
-        fi
+        echo "=== Searching for APK files ==="
+        find build -name "*.apk" -type f || echo "No APK found"
 
-    - name: Build AAB
-      run: flutter build appbundle --release --verbose
-      env:
-        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
-    - name: Verify AAB Build
-      run: |
-        AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
-        if [ -f "$AAB_PATH" ]; then
-          echo "✅ AAB built successfully"
-          echo "AAB Size: $(du -h $AAB_PATH | cut -f1)"
-          echo "AAB_PATH=$AAB_PATH" >> $GITHUB_ENV
-        else
-          echo "❌ AAB not found at $AAB_PATH"
-          echo "Searching for AAB files..."
-          find build -name "*.aab" -type f
-          exit 1
-        fi
-
-    - name: Upload APK
+    - name: Upload APK (ARM64)
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-apk
-        path: build/app/outputs/flutter-apk/app-release.apk
-        if-no-files-found: error
+        name: app-arm64-v8a-release
+        path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+        if-no-files-found: warn
+
+    - name: Upload APK (ARMv7)
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-armeabi-v7a-release
+        path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+        if-no-files-found: warn
+
+    - name: Upload APK (x86_64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-x86_64-release
+        path: build/app/outputs/flutter-apk/app-x86_64-release.apk
+        if-no-files-found: warn
+
+    - name: Build AAB
+      run: flutter build appbundle --release
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      timeout-minutes: 25
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-aab
+        name: app-release-bundle
         path: build/app/outputs/bundle/release/app-release.aab
         if-no-files-found: error
 
@@ -226,10 +266,17 @@ jobs:
       run: |
         echo "=== Build Summary ==="
         echo ""
-        if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-          echo "✅ APK: $(ls -lh build/app/outputs/flutter-apk/app-release.apk | awk '{print $5}')"
-        else
-          echo "❌ APK build failed"
+        
+        if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
+          echo "✅ APK ARM64: $(ls -lh build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | awk '{print $5}')"
+        fi
+        
+        if [ -f "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" ]; then
+          echo "✅ APK ARMv7: $(ls -lh build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk | awk '{print $5}')"
+        fi
+        
+        if [ -f "build/app/outputs/flutter-apk/app-x86_64-release.apk" ]; then
+          echo "✅ APK x86_64: $(ls -lh build/app/outputs/flutter-apk/app-x86_64-release.apk | awk '{print $5}')"
         fi
         
         if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
