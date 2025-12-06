@@ -1,191 +1,46 @@
-name: Build Android APK
- 
+name: Build Flutter APK
+
 on:
   push:
-    branches: [ main ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ main ]
- 
+    branches: [ main, master ]
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
 jobs:
   build:
     runs-on: ubuntu-latest
-   
+
     steps:
-    - name: Checkout code
+    # Step 1: Checkout your code
+    - name: Checkout repository
       uses: actions/checkout@v4
- 
+
+    # Step 2: Setup Java (required for Android builds)
     - name: Setup Java
       uses: actions/setup-java@v4
       with:
         distribution: 'zulu'
         java-version: '17'
- 
+
+    # Step 3: Setup Flutter
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.24.0'
+        flutter-version: '3.24.0' # Use latest stable version
         channel: 'stable'
- 
-    - name: Verify secrets are set
-      run: |
-        if [ -z "${{ secrets.SUPABASE_URL }}" ]; then
-          echo "ERROR: SUPABASE_URL secret is not set!"
-          exit 1
-        fi
-        if [ -z "${{ secrets.SUPABASE_ANON_KEY }}" ]; then
-          echo "ERROR: SUPABASE_ANON_KEY secret is not set!"
-          exit 1
-        fi
-        echo "✓ Both secrets are set"
- 
-    - name: Create .env file
-      run: |
-        echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
-        echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-        echo "✓ .env file created"
-       
-    - name: Verify .env file
-      run: |
-        if [ ! -f .env ]; then
-          echo "ERROR: .env file was not created!"
-          exit 1
-        fi
-        echo "✓ .env file exists"
-        echo "File size: $(wc -c < .env) bytes"
-        if [ $(wc -c < .env) -lt 100 ]; then
-          echo "WARNING: .env file seems too small (less than 100 bytes)!"
-        fi
-        if grep -q "SUPABASE_URL=https://" .env; then
-          echo "✓ SUPABASE_URL has correct format"
-        else
-          echo "ERROR: SUPABASE_URL is missing or malformed!"
-          exit 1
-        fi
-        if grep -q "SUPABASE_ANON_KEY=eyJ" .env; then
-          echo "✓ SUPABASE_ANON_KEY has correct format"
-        else
-          echo "ERROR: SUPABASE_ANON_KEY is missing or malformed!"
-          exit 1
-        fi
- 
-    - name: Decode keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-        echo "✓ Keystore decoded"
-        ls -lh android/app/upload-keystore.jks
- 
-    - name: Create key.properties
-      run: |
-        echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > android/key.properties
-        echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
-        echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> android/key.properties
-        echo "storeFile=upload-keystore.jks" >> android/key.properties
-        echo "✓ key.properties created"
 
-    - name: Grant execute permission for gradlew
-      run: chmod +x android/gradlew
+    # Step 4: Install dependencies
+    - name: Install dependencies
+      run: flutter pub get
 
-    - name: Configure Gradle
-      run: |
-        mkdir -p ~/.gradle
-        echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> ~/.gradle/gradle.properties
-        echo "org.gradle.daemon=false" >> ~/.gradle/gradle.properties
-        echo "org.gradle.parallel=false" >> ~/.gradle/gradle.properties
- 
-    - name: Clean and get dependencies
-      run: |
-        flutter clean
-        flutter pub get
-   
-    - name: Generate app icons
-      run: |
-        echo "Generating launcher icons..."
-        dart run flutter_launcher_icons
-        echo "✓ Icons generated"
- 
-    - name: Build APK with detailed logging
-      id: build_apk
-      continue-on-error: true
-      run: |
-        echo "========================================"
-        echo "Starting APK build with maximum verbosity"
-        echo "========================================"
-        flutter build apk --release --verbose --no-tree-shake-icons 2>&1 | tee build_output.log
-        BUILD_EXIT_CODE=${PIPESTATUS[0]}
-        echo "Build exit code: $BUILD_EXIT_CODE"
-        
-        if [ $BUILD_EXIT_CODE -ne 0 ]; then
-          echo "========================================"
-          echo "BUILD FAILED - Extracting error details"
-          echo "========================================"
-          
-          # Extract actual error from logs
-          echo "--- GRADLE ERRORS ---"
-          grep -i "error" build_output.log || echo "No 'error' found"
-          
-          echo "--- FAILURE MESSAGES ---"
-          grep -i "failure\|failed\|exception" build_output.log | head -20 || echo "No failure messages found"
-          
-          echo "--- TASK FAILURES ---"
-          grep -A5 "FAILURE: Build failed with an exception" build_output.log || echo "No task failure details found"
-          
-          echo "--- LAST 50 LINES OF OUTPUT ---"
-          tail -50 build_output.log
-        fi
-        
-        exit $BUILD_EXIT_CODE
+    # Step 5: Build APK
+    - name: Build APK
+      run: flutter build apk --release
 
-    - name: Upload complete build log
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: complete-build-log
-        path: build_output.log
-        retention-days: 5
-
-    - name: Try direct Gradle build for more details
-      if: failure()
-      run: |
-        echo "========================================"
-        echo "Attempting direct Gradle build"
-        echo "========================================"
-        cd android
-        ./gradlew assembleRelease --stacktrace --info 2>&1 | tee ../gradle_direct.log
-      continue-on-error: true
-
-    - name: Upload Gradle direct log
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: gradle-direct-log
-        path: gradle_direct.log
-        retention-days: 5
- 
-    - name: Verify APK was created
-      if: steps.build_apk.outcome == 'success'
-      run: |
-        if [ -f build/app/outputs/flutter-apk/app-release.apk ]; then
-          echo "✓ APK created successfully"
-          ls -lh build/app/outputs/flutter-apk/app-release.apk
-        else
-          echo "ERROR: APK was not created!"
-          exit 1
-        fi
- 
+    # Step 6: Upload APK as artifact
     - name: Upload APK
-      if: steps.build_apk.outcome == 'success'
       uses: actions/upload-artifact@v4
       with:
-        name: app-release-apk
+        name: app-release
         path: build/app/outputs/flutter-apk/app-release.apk
- 
-    - name: Build AAB
-      if: steps.build_apk.outcome == 'success'
-      run: flutter build appbundle --release
- 
-    - name: Upload AAB
-      if: steps.build_apk.outcome == 'success'
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-release-aab
-        path: build/app/outputs/bundle/release/app-release.aab
